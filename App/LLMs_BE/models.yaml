@@ -1,0 +1,106 @@
+ollama:
+  chat:
+    stream: false
+    think: false
+    format: json
+    keep_alive: 60m
+    options:
+      temperature: 0
+      seed: 42
+      num_ctx: 32768
+      num_predict: 8192
+      top_p: 0.9
+      repeat_penalty: 1.05
+
+models:
+  # ==============================
+  # QWEN (Instruct)
+  # ==============================
+
+  - id: qwen2_5_0_5b_instruct
+    name: Qwen2.5_0.5B_Instruct
+    engine: transformers
+    repo_id: Qwen/Qwen2.5-0.5B-Instruct
+    dtype: auto
+    max_model_len: 8888
+
+  - id: qwen2_5_3b_instruct
+    name: Qwen2.5_3B_Instruct
+    engine: transformers
+    repo_id: Qwen/Qwen2.5-3B-Instruct
+    dtype: float16
+    max_model_len: 3192
+
+  - id: qwen2_5_7b_instruct
+    name: Qwen2.5_7B_Instruct
+    engine: transformers
+    repo_id: Qwen/Qwen2.5-7B-Instruct
+    quantization: 4bit
+    dtype: auto
+    max_model_len: 32768
+
+  - id: qwen3_4b_instruct_2507
+    name: Qwen3-4B-Instruct-2507
+    engine: transformers
+    repo_id: Qwen/Qwen3-4B-Instruct-2507
+    dtype: auto
+    max_model_len: 11000
+
+  - id: qwen3_8b
+    name: Qwen3-8B (4bit)
+    engine: transformers
+    repo_id: Qwen/Qwen3-8B
+    quantization: 4bit
+    enable_thinking: true
+    dtype: auto
+    max_model_len: 32768
+
+  - id: qwen3_5_4b
+    name: Qwen3.5-4B
+    engine: transformers
+    repo_id: Qwen/Qwen3.5-4B
+    enable_thinking: false
+    dtype: auto
+    max_model_len: 32768
+
+  - id: qwen3_5_9b 
+    name: Qwen3.5-9B
+    engine: transformers
+    repo_id: Qwen/Qwen3.5-9B
+    enable_thinking: false
+    dtype: auto
+    max_model_len: 32768
+
+  # ==============================
+  # LLAMA 3.2 (Instruct)
+  # ==============================
+  - id: llama_3_2_1b_instruct
+    name: Llama_3.2_1B_Instruct
+    engine: transformers
+    repo_id: meta-llama/Llama-3.2-1B-Instruct
+    dtype: auto
+    max_model_len: 32768
+
+  # ==============================
+  # GEMMA 4 (Instruction-tuned)
+  # ==============================
+  - id: gemma_4_e4b_it
+    name: Gemma-4-E4B-it
+    engine: transformers
+    repo_id: google/gemma-4-E4B-it
+    enable_thinking: false
+    dtype: bfloat16
+    max_model_len: 10000
+
+  # ==============================
+  # QWEN 2.5 - 32B
+  # ==============================
+
+  # - id: qwen2_5_32b_instruct
+  #   name: Qwen2.5-32B-Instruct
+  #   engine: transformers
+  #   repo_id: Qwen/Qwen2.5-32B-Instruct
+  #   quantization: 4bit
+  #   dtype: auto
+  #   max_model_len: 131072
+

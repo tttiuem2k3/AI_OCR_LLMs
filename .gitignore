@@ -1,0 +1,63 @@
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python cache / runtime
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.egg-info/
+.pytest_cache/
+
+# Local virtual environments
+AI_BEM/
+.venv/
+venv/
+env/
+
+# Generated / temporary files
+Outputs/
+Logs/
+.tmp/
+tmp/
+_report_preview/
+# Local datasets / training artifacts
+Data_test/
+App/LLMs_Train/data/
+App/LLMs_Train/models_lora/
+
+# Large OCR / LLM models
+PPOCRLabel/
+/Models/*
+!/Models/.gitkeep
+/Cache/*
+!/Cache/.gitkeep
+# Model binary formats
+*.pdparams
+*.pdiparams
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.nb
+*.tar
+*.zip
+# Local bundled runtimes
+/Lib/ocr/*
+!/Lib/ocr/.gitkeep
+/Lib/Python/*
+!/Lib/Python/.gitkeep
+
+# Editor / OS
+.vscode/
+Thumbs.db
+.DS_Store
+*.[b]in
+/wfastcgi/

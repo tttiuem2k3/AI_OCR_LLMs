@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AI Server — Trang chủ</title>
+  <meta name="description" content="Hệ thống AI xử lý tài liệu: OCR đa định dạng và Chat với mô hình ngôn ngữ (LLMs)." />
+  <link rel="icon" href="data:," />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Montserrat', Arial, sans-serif;
+      background: #fff;
+      color: #222;
+    }
+    .grain::before { display: none; }
+    .minimal-border {
+      border: 1.5px solid #e5e7eb;
+      border-radius: 1.5rem;
+    }
+    .minimal-btn {
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(37,99,235,0.08);
+      transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+    }
+    .minimal-btn:hover {
+      background: #1d4ed8;
+      box-shadow: 0 4px 16px 0 rgba(37,99,235,0.13);
+      transform: translateY(-1px) scale(1.02);
+    }
+    .minimal-link {
+      color: #2563eb;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .minimal-link:hover {
+      color: #1d4ed8;
+      text-decoration: underline;
+    }
+    .minimal-shadow {
+      box-shadow: 0 2px 12px 0 rgba(30,41,59,0.06);
+    }
+    .minimal-header {
+      background: rgba(255,255,255,0.95);
+      border-bottom: 1.5px solid #e5e7eb;
+      box-shadow: 0 2px 8px 0 rgba(30,41,59,0.04);
+    }
+    /* Rainbow button palette */
+    .btn-red    { background: #b91c1c; color: #fff; }
+    .btn-orange { background: #c2410c; color: #fff; }
+    .btn-yellow { background: #a16207; color: #fff; }
+    .btn-green  { background: #166534; color: #fff; }
+    .btn-cyan   { background: #0e7490; color: #fff; }
+    .btn-blue   { background: #1e40af; color: #fff; }
+    .btn-purple { background: #701a75; color: #fff; }
+    .btn-red:hover    { background: #991b1b; }
+    .btn-orange:hover { background: #9a3412; }
+    .btn-yellow:hover { background: #854d0e; }
+    .btn-green:hover  { background: #14532d; }
+    .btn-cyan:hover   { background: #155e75; }
+    .btn-blue:hover   { background: #1e3a8a; }
+    .btn-purple:hover { background: #581c87; }
+    .btn-rainbow {
+      font-weight: 600;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(30,41,59,0.08);
+      transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+    }
+    .btn-rainbow:hover {
+      box-shadow: 0 4px 16px 0 rgba(30,41,59,0.13);
+      transform: translateY(-1px) scale(1.02);
+    }
+  </style>
+</head>
+
+<body class="grain min-h-screen bg-white text-slate-900">
+  <!-- top accent -->
+  <!-- (loại bỏ gradient cầu vồng) -->
+  <div class="relative">
+    <!-- Header -->
+    <header class="sticky top-0 z-10 minimal-header">
+      <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-2xl bg-blue-100 flex items-center justify-center minimal-shadow">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#2563eb" opacity="0.12"/><path d="M8 12h8M12 8v8" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="leading-tight">
+            <div class="text-sm font-semibold tracking-tight text-slate-900">AI Server - For BEM</div>
+            <div class="text-xs text-slate-500">OCR • LLMs • TTT • ASOFT</div>
+          </div>
+        </div>
+
+        <nav class="flex items-center gap-1 text-sm">
+          <a href="/" class="px-3 py-2 rounded-xl minimal-link font-semibold hover:bg-slate-100 transition">Trang chủ</a>
+          <a href="/ocr/" target="_blank" rel="noopener" class="px-3 py-2 rounded-xl minimal-link font-semibold hover:bg-slate-100 transition">OCR</a>
+          <a href="/llms/" target="_blank" rel="noopener" class="px-3 py-2 rounded-xl minimal-link font-semibold hover:bg-slate-100 transition">LLMs</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="mx-auto max-w-6xl px-4 py-10">
+      <!-- Hero -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7">
+          <div class="rounded-3xl minimal-border bg-white p-8 minimal-shadow">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-slate-200 bg-slate-50 text-xs text-slate-600 shadow-sm">
+              <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span>Server nội bộ • Tối ưu xử lý tài liệu</span>
+            </div>
+
+            <h1 class="mt-5 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900" style="font-family: 'Montserrat', 'Inter', Arial, sans-serif;">
+              Nền tảng AI cho OCR & LLMs
+            </h1>
+
+            <p class="mt-4 text-base md:text-lg text-slate-700 leading-relaxed font-medium">
+              Hệ thống gồm 2 mô-đun chính: <b>OCR</b> (PDF/Ảnh/Office → text) và <b>LLMs</b> (chat/generate).<br>
+              Model lưu tại <code class="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200">Project/Models</code>
+              và log tại <code class="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200">Project/Logs/app.log</code>.
+            </p>
+
+            <div class="mt-8 flex flex-col sm:flex-row gap-3">
+              <a href="/ocr/" target="_blank" rel="noopener" class="btn-rainbow btn-orange inline-flex items-center justify-center gap-2 px-5 py-3 text-lg minimal-shadow">
+                <span class="inline-block text-white font-bold">Mở OCR UI</span>
+                <span class="opacity-80 text-white font-bold">→</span>
+              </a>
+              <a href="/llms/" target="_blank" rel="noopener" class="btn-rainbow btn-blue inline-flex items-center justify-center gap-2 px-5 py-3 text-lg minimal-shadow">
+                <span class="inline-block text-white font-bold">Mở LLMs UI</span>
+                <span class="opacity-80 text-white font-bold">→</span>
+              </a>
+              <button id="btnHealth" type="button" class="btn-rainbow btn-green inline-flex items-center justify-center gap-2 px-5 py-3 text-lg minimal-shadow">
+                <span class="text-white font-bold">Chẩn đoán nhanh</span>
+              </button>
+            </div>
+
+            <!-- Diagnostics -->
+            <div id="healthBox" class="mt-7 hidden rounded-2xl border border-slate-200 bg-white p-5 minimal-shadow">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div class="text-sm font-semibold text-slate-900">Trạng thái hệ thống</div>
+                <div class="text-xs text-slate-500">
+                  Lưu ý: UI LLMs có mapping <code class="px-1 py-0.5 rounded bg-white border border-slate-200">/api/*</code> →
+                  <code class="px-1 py-0.5 rounded bg-white border border-slate-200">/llms/api/*</code>
+                </div>
+              </div>
+
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div class="rounded-2xl border-2 minimal-border bg-white p-4 minimal-shadow">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-xs text-slate-500">OCR</div>
+                      <div id="ocrStatus" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="h-10 w-10 rounded-2xl bg-blue-100 flex items-center justify-center minimal-shadow">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#2563eb" opacity="0.12"/>
+                        <path d="M8 12h8M12 8v8" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-xs text-slate-500">Endpoint: <a class="underline hover:text-slate-800" href="/ping">/ping</a></div>
+                </div>
+
+                <div class="rounded-2xl border-2 minimal-border bg-white p-4 minimal-shadow">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-xs text-slate-500">LLMs</div>
+                      <div id="llmsStatus" class="mt-1 font-semibold">—</div>
+                    </div>
+                    <div class="h-10 w-10 rounded-2xl bg-blue-100 flex items-center justify-center minimal-shadow">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#2563eb" opacity="0.12"/>
+                        <path d="M8 12h8M12 8v8" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-xs text-slate-500">Endpoint: <a class="underline hover:text-slate-800" href="/llms/api/health">/llms/api/health</a></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <aside class="lg:col-span-5">
+          <div class="rounded-3xl minimal-border bg-white p-7 minimal-shadow">
+            <div class="text-base font-bold text-slate-900">Lối tắt</div>
+            <div class="mt-4 space-y-3 text-base">
+              <a href="/ocr/" target="_blank" rel="noopener" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 hover:bg-slate-100 transition shadow-sm">
+                <div>
+                  <div class="font-semibold">OCR UI</div>
+                  <div class="text-xs text-slate-500">Test PDF/Ảnh/Office</div>
+                </div>
+                <span class="minimal-link">→</span>
+              </a>
+              <a href="/llms/" target="_blank" rel="noopener" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 hover:bg-slate-100 transition shadow-sm">
+                <div>
+                  <div class="font-semibold">LLMs UI</div>
+                  <div class="text-xs text-slate-500">Chat + streaming</div>
+                </div>
+                <span class="minimal-link">→</span>
+              </a>
+              <div class="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
+                <div class="text-xs text-slate-500">Cấu trúc</div>
+                <div class="mt-1 font-mono text-[13px] text-slate-700">UI: Project/UI</div>
+                <div class="font-mono text-[13px] text-slate-700">BE: Project/App/OCR_BE • Project/App/LLMs_BE</div>
+                <div class="font-mono text-[13px] text-slate-700">Models: Project/Models</div>
+                <div class="font-mono text-[13px] text-slate-700">Logs: Project/Logs/app.log</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 text-xs text-slate-500 minimal-link">
+            Tip: Nếu OCR báo lỗi tải model, hãy đảm bảo thư mục cache có quyền ghi (Project/Cache).
+          </div>
+        </aside>
+      </section>
+
+      <footer class="mt-12 text-xs text-slate-500 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+        <div>© <span id="year"></span> <span class="minimal-link">AI Document Server</span></div>
+        <div>Quick links: <a class="minimal-link" href="/ocr/" target="_blank" rel="noopener">/ocr/</a> • <a class="minimal-link" href="/llms/" target="_blank" rel="noopener">/llms/</a></div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const btn = document.getElementById('btnHealth');
+    const box = document.getElementById('healthBox');
+    const ocrStatus = document.getElementById('ocrStatus');
+    const llmsStatus = document.getElementById('llmsStatus');
+
+    async function fetchJson(url) {
+      const r = await fetch(url, { cache: 'no-store' });
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      if (ct.includes('application/json')) return await r.json();
+      return { status: r.ok ? 'ok' : 'bad', raw: await r.text() };
+    }
+
+    btn.addEventListener('click', async () => {
+      box.classList.remove('hidden');
+      ocrStatus.textContent = 'Đang kiểm tra...';
+      llmsStatus.textContent = 'Đang kiểm tra...';
+
+      try {
+        const pong = await fetch('/ping', { cache: 'no-store' });
+        const txt = await pong.text();
+        ocrStatus.textContent = pong.ok ? txt : 'OCR not-ready';
+        ocrStatus.className = pong.ok ? 'mt-1 font-semibold text-emerald-700' : 'mt-1 font-semibold text-rose-700';
+      } catch (e) {
+        ocrStatus.textContent = 'Không thể kết nối /ping';
+        ocrStatus.className = 'mt-1 font-semibold text-rose-700';
+      }
+
+      try {
+        const h = await fetchJson('/llms/api/health');
+        const ok = h && (h.status === 'ok' || h.status === true);
+        llmsStatus.textContent = ok ? 'LLMs ready' : 'LLMs not-ready';
+        llmsStatus.className = ok ? 'mt-1 font-semibold text-emerald-700' : 'mt-1 font-semibold text-rose-700';
+      } catch (e) {
+        llmsStatus.textContent = 'Không thể kết nối /llms/api/health';
+        llmsStatus.className = 'mt-1 font-semibold text-rose-700';
+      }
+    });
+  </script>
+</body>
+</html>

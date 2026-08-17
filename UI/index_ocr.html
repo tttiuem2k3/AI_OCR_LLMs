@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>OCR Services — PaddleOCR</title>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.tailwindcss.com"></script> 
+  <style>.backdrop-blur{backdrop-filter:blur(6px);}</style>
+</head>
+<body class="bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900 min-h-screen">
+<div class="max-w-7xl mx-auto py-10 px-4">
+
+  <!-- Header -->
+  <header class="mb-8">
+    <div class="flex items-center gap-4">
+      <div class="h-12 w-12 rounded-2xl bg-sky-600 text-white grid place-items-center shadow-sm text-sm font-semibold">OCR</div>
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">PaddleOCR — Multi File — By Trần Tấn Thịnh</h1>
+        <p id="ocrPageSubtitle" class="text-base text-slate-600">Tải PDF/Ảnh/Word/Excel/PowerPoint → POST /ocr → Trả 1 TXT gộp + ảnh annotate</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Server URL + Ping -->
+  <section class="mb-6 p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+    <label class="block text-sm font-medium mb-2" for="serverUrl">Server API OCR</label>
+    <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+      <input id="serverUrl" type="url"
+        class="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-base focus:border-sky-500 focus:ring-sky-500"
+        value="http://192.168.0.157:4444/ocr" placeholder="http://IP:PORT/ocr" />
+      <button id="pingBtn" type="button" class="px-4 py-2.5 rounded-lg bg-slate-800 text-white text-sm">Ping</button>
+    </div>
+    <p id="pingMsg" class="mt-2 text-xs text-slate-500">Ví dụ: http://192.168.0.157:4444/ocr</p>
+
+    <div id="ocrEnginePanel" class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-start gap-3">
+          <div id="ocrEngineIcon" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-200 text-sm font-bold text-slate-600">?</div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Engine OCR đang chạy</span>
+              <span id="ocrEngineReadyBadge" class="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-500">Đang kiểm tra</span>
+            </div>
+            <div id="ocrEngineName" class="mt-1 text-lg font-semibold text-slate-800">Chưa xác định</div>
+            <p id="ocrEngineDescription" class="mt-1 text-sm text-slate-600">UI đang lấy trạng thái engine từ server.</p>
+          </div>
+        </div>
+        <div id="ocrEngineMode" class="self-start rounded-lg bg-white px-3 py-2 text-xs font-medium text-slate-500 shadow-sm ring-1 ring-slate-200">GET /ocr/status</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Upload -->
+  <section class="mb-6 p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-3">
+      <h2 class="text-xl font-semibold">1) Chọn hoặc kéo-thả tệp</h2>
+      <div class="flex items-center gap-3">
+        <input id="fileInput" type="file" multiple class="hidden"
+          accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/html,.pdf,.doc,.docx,.xls,.xlsx,.pptx,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp,.htm,.html"/>
+        <button id="addBtn" type="button" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-sm hover:bg-slate-50">Thêm tệp</button>
+        <span id="fileCountBadge" class="px-2 py-1 rounded-lg text-xs bg-slate-100 text-slate-700 hidden">0 tệp</span>
+        <button id="sendBtn" type="button" class="px-5 py-2.5 rounded-xl bg-sky-600 text-white text-base disabled:opacity-50" disabled>Thực hiện OCR</button>
+      </div>
+    </div>
+
+    <!-- Dropzone + List -->
+    <div id="dropzone" class="mt-2 border-2 border-dashed rounded-2xl p-4 text-slate-500 hover:text-slate-700 hover:border-sky-300 transition">
+      <div id="fileList" class="space-y-2">
+        <div class="text-lg">Kéo thả file vào đây hoặc nhấn "Thêm tệp"</div>
+        <div class="text-xs text-slate-400">Hỗ trợ PDF/Ảnh/Word/Excel/PowerPoint/HTML</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="mt-6 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-sm text-slate-600">Trạng thái</span>
+        <span id="timer" class="text-base font-semibold text-slate-800">00:00</span>
+      </div>
+      <div class="w-full h-3 rounded-full bg-slate-200 overflow-hidden"><div id="bar" class="h-3 bg-sky-500 w-0 transition-[width] duration-300"></div></div>
+      <div id="status" class="text-sm text-slate-700">Chưa xử lý.</div>
+    </div>
+  </section>
+
+  <!-- TXT -->
+  <section class="mb-6 p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+      <h2 class="text-xl font-semibold">2) Kết quả Text</h2>
+      <div class="flex gap-2">
+        <button id="copyBtn" type="button" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">Copy</button>
+        <button id="saveBtn" type="button" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm">Lưu file</button>
+      </div>
+    </div>
+    <textarea id="output" rows="18" class="w-full font-mono text-[14px] rounded-xl border border-slate-300 px-4 py-4 focus:border-sky-500 focus:ring-sky-500" placeholder="Kết quả từ server..."></textarea>
+  </section>
+
+  <!-- ✅ ẢNH ANNOTATE -->
+  <section class="mb-6 p-6 bg-white rounded-2xl shadow-sm border border-slate-200">
+    <h2 class="text-xl font-semibold mb-4">3) Hiển thị các ảnh (Annotate)</h2>
+    <div id="imgStatus" class="text-sm text-slate-600 mb-2">Chưa có ảnh.</div>
+    <div id="imgGrid" class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+  </section>
+
+</div>
+
+<!-- ✅ Modal preview ảnh -->
+<div id="imgModal" class="fixed inset-0 bg-black/70 backdrop-blur hidden items-center justify-center z-50">
+  <img id="imgPreview" src="" class="max-h-[90vh] max-w-[90vw] shadow-2xl rounded-xl"/>
+</div>
+
+<script>
+let selectedFiles = [];
+let busy = false;
+let timerInt=null, t0=0;
+
+const fileInput  = document.getElementById("fileInput");
+const fileList   = document.getElementById("fileList");
+const dropzone   = document.getElementById("dropzone");
+const addBtn     = document.getElementById("addBtn");
+const sendBtn    = document.getElementById("sendBtn");
+const serverUrl  = document.getElementById("serverUrl");
+const timerEl    = document.getElementById("timer");
+const barEl      = document.getElementById("bar");
+const statusEl   = document.getElementById("status");
+const fileCountBadge = document.getElementById("fileCountBadge");
+const outputEl   = document.getElementById("output");
+const copyBtn    = document.getElementById("copyBtn");
+const saveBtn    = document.getElementById("saveBtn");
+const pingBtn    = document.getElementById("pingBtn");
+const pingMsg    = document.getElementById("pingMsg");
+const ocrPageSubtitle = document.getElementById("ocrPageSubtitle");
+const ocrEnginePanel = document.getElementById("ocrEnginePanel");
+const ocrEngineIcon = document.getElementById("ocrEngineIcon");
+const ocrEngineName = document.getElementById("ocrEngineName");
+const ocrEngineDescription = document.getElementById("ocrEngineDescription");
+const ocrEngineReadyBadge = document.getElementById("ocrEngineReadyBadge");
+const ocrEngineMode = document.getElementById("ocrEngineMode");
+let activeOcrEngine = { key: "unknown", label: "OCR" };
+
+function getServerBase(){
+  return (serverUrl.value||'').trim().replace(/\/?ocr\/?$/i,'').replace(/\/$/,'');
+}
+
+function renderOcrEngineStatus(data){
+  const key = String(data?.engine || 'unknown').toLowerCase();
+  const ready = data?.ready === true;
+  const configs = {
+    ppstructure_v3: {
+      label: 'PPStructureV3', icon: 'P3', mode: 'OCR truyền thống',
+      description: 'Phân tích tài liệu bằng pipeline phát hiện chữ, nhận dạng chữ, bố cục và bảng.',
+      subtitle: 'PPStructureV3 → phát hiện chữ, bố cục, bảng → TXT + ảnh annotate',
+      panel: 'mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4',
+      iconClass: 'grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-600 text-sm font-bold text-white',
+      modeClass: 'self-start rounded-lg bg-white px-3 py-2 text-xs font-medium text-sky-700 shadow-sm ring-1 ring-sky-200'
+    },
+    paddleocr_vl: {
+      label: 'PaddleOCR-VL', icon: 'VL', mode: 'Vision-Language OCR',
+      description: 'Đọc và phân tích tài liệu bằng mô hình vision-language PaddleOCR-VL.',
+      subtitle: 'PaddleOCR-VL → vision-language document parsing → TXT + ảnh annotate',
+      panel: 'mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4',
+      iconClass: 'grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-600 text-sm font-bold text-white',
+      modeClass: 'self-start rounded-lg bg-white px-3 py-2 text-xs font-medium text-violet-700 shadow-sm ring-1 ring-violet-200'
+    }
+  };
+  const cfg = configs[key];
+  if(!cfg){
+    activeOcrEngine = { key: 'unknown', label: 'OCR' };
+    ocrEnginePanel.className = 'mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4';
+    ocrEngineIcon.className = 'grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500 text-sm font-bold text-white';
+    ocrEngineIcon.textContent = '?';
+    ocrEngineName.textContent = 'Không xác định được engine';
+    ocrEngineDescription.textContent = 'Vẫn có thể sử dụng luồng OCR hiện tại. Hãy kiểm tra GET /ocr/status nếu cần.';
+    ocrEngineMode.textContent = 'Fallback';
+    ocrEngineMode.className = 'self-start rounded-lg bg-white px-3 py-2 text-xs font-medium text-amber-700 shadow-sm ring-1 ring-amber-200';
+    ocrEngineReadyBadge.textContent = 'Không xác định';
+    ocrEngineReadyBadge.className = 'rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-amber-700';
+    ocrPageSubtitle.textContent = 'Tải PDF/Ảnh/Word/Excel/PowerPoint → POST /ocr → Trả 1 TXT gộp + ảnh annotate';
+    outputEl.placeholder = 'Kết quả từ server...';
+    sendBtn.textContent = 'Thực hiện OCR';
+    return;
+  }
+
+  activeOcrEngine = { key, label: cfg.label };
+  ocrEnginePanel.className = cfg.panel;
+  ocrEngineIcon.className = cfg.iconClass;
+  ocrEngineIcon.textContent = cfg.icon;
+  ocrEngineName.textContent = cfg.label;
+  ocrEngineDescription.textContent = cfg.description;
+  ocrEngineMode.textContent = cfg.mode;
+  ocrEngineMode.className = cfg.modeClass;
+  ocrPageSubtitle.textContent = cfg.subtitle;
+  outputEl.placeholder = `Kết quả từ ${cfg.label}...`;
+  sendBtn.textContent = `Chạy ${cfg.label}`;
+  ocrEngineReadyBadge.textContent = ready ? 'Đã nạp' : 'Sẽ nạp khi chạy';
+  ocrEngineReadyBadge.className = ready
+    ? 'rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs text-emerald-700'
+    : 'rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-amber-700';
+}
+
+async function loadOcrEngineStatus(){
+  const base = getServerBase();
+  if(!/^https?:\/\//i.test(base)){
+    renderOcrEngineStatus(null);
+    return;
+  }
+  try{
+    const res = await fetch(new URL('/ocr/status', base).href, { method: 'GET', cache: 'no-store' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    renderOcrEngineStatus(await res.json());
+  }catch{
+    renderOcrEngineStatus(null);
+  }
+}
+
+function fmtSize(b){const u=['B','KB','MB','GB'];let i=0,s=b;while(s>=1024&&i<u.length-1){s/=1024;i++}return s.toFixed(s>=10?0:1)+' '+u[i];}
+function setStatus(msg,ok=true){statusEl.textContent=msg||'';statusEl.className='text-sm '+(ok?'text-slate-700':'text-rose-600');}
+function setBar(p){barEl.style.width=p+'%';}
+function startTimer(){t0=Date.now(); if(timerInt) clearInterval(timerInt); timerInt=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000); const mm=String(Math.floor(s/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); timerEl.textContent=mm+':'+ss;},200);}
+function stopTimer(){ if(timerInt){clearInterval(timerInt); timerInt=null;} }
+function refreshBadge(){const n=selectedFiles.length; if(n>0){fileCountBadge.textContent=`${n} tệp`; fileCountBadge.classList.remove('hidden');} else fileCountBadge.classList.add('hidden');}
+function updateSendBtn(){const urlOk=/^https?:\/\/.+\/ocr$/i.test((serverUrl.value||'')); const hasValid=selectedFiles.some(x=>x.ok); sendBtn.disabled=!(urlOk&&hasValid&&!busy);}
+
+const ALLOWED_EXTS=[".pdf",".png",".jpg",".jpeg",".tif",".tiff",".bmp",".webp",".doc",".docx",".xls",".xlsx",".pptx",".htm",".html"];
+function extOf(n=''){const m=n.toLowerCase().match(/\.[^.]+$/);return m?m[0]:'';}
+async function verifyOne(file){
+  try{
+    const ext=extOf(file.name); if(!ALLOWED_EXTS.includes(ext)) return {ok:false,msg:'Định dạng không hỗ trợ'};
+    if (ext === '.htm' || ext === '.html') return {ok:true,msg:'Hợp lệ'};
+    const head=new Uint8Array(await file.slice(0,16).arrayBuffer());
+    const isPDF=head[0]===0x25&&head[1]===0x50&&head[2]===0x44&&head[3]===0x46;
+    const isPNG=head[0]===0x89&&head[1]===0x50&&head[2]===0x4E;
+    const isJPG=head[0]===0xFF&&head[1]===0xD8;
+    const isTIFF=(head[0]===0x49&&head[1]===0x49)||(head[0]===0x4D&&head[1]===0x4D);
+    const isBMP=head[0]===0x42&&head[1]===0x4D;
+    const isRIFF=head[0]===0x52&&head[1]===0x49&&head[2]===0x46&&head[3]===0x46;
+    const isWEBP=isRIFF&&head[8]===0x57&&head[9]===0x45&&head[10]===0x42&&head[11]===0x50;
+    const isZIP=head[0]===0x50&&head[1]===0x4B;
+    const isOLE=head[0]===0xD0&&head[1]===0xCF&&head[2]===0x11&&head[3]===0xE0;
+    let ok=false;
+    switch(ext){
+      case'.pdf':ok=isPDF;break; case'.png':ok=isPNG;break;
+      case'.jpg':case'.jpeg':ok=isJPG;break; case'.tif':case'.tiff':ok=isTIFF;break;
+      case'.bmp':ok=isBMP;break; case'.webp':ok=isWEBP;break;
+      case'.doc':case'.xls':ok=isOLE;break;
+      case'.docx':case'.xlsx':case'.pptx':ok=isZIP;break;
+    }
+    return {ok,msg:ok?'Hợp lệ':'Header không đúng'};
+  }catch(e){return{ok:false,msg:String(e)}}
+}
+function makeKey(f){return[f.name,f.size,f.lastModified||0].join('|');}
+async function addFiles(fileList){
+  const arr=Array.from(fileList||[]);
+  for(const f of arr){
+    const key=makeKey(f);
+    if(selectedFiles.some(x=>x.key===key)) continue;
+    const {ok,msg}=await verifyOne(f);
+    const id=crypto.randomUUID?.()||(Date.now()+'_'+Math.random());
+    selectedFiles.push({id,file:f,key,ok,msg});
+  }
+  renderFileList(); updateSendBtn(); refreshBadge();
+}
+function renderFileList(){
+  if(selectedFiles.length===0){
+    fileList.innerHTML=`<div class="text-lg">Kéo thả file vào đây hoặc nhấn "Thêm tệp"</div>
+      <div class="text-xs text-slate-400">Hỗ trợ PDF/Ảnh/Word/Excel/PowerPoint/HTML</div>`;
+    return;
+  }
+  const html = selectedFiles.map(f => `
+    <div class="flex items-center justify-between bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+      <div class="truncate text-sm">
+        <span class="font-medium">${f.file.name}</span>
+        <span class="text-slate-500 ml-2">${fmtSize(f.file.size)}</span>
+        ${f.ok?`<span class="text-emerald-600 ml-2">✅</span>`:`<span class="text-rose-600 ml-2">❌</span>`}
+      </div>
+      <button data-id="${f.id}" class="removeFile px-2 py-1 text-xs bg-rose-50 text-rose-600 border border-rose-200 rounded-md ml-3 hover:bg-rose-100">X</button>
+    </div>`).join('');
+  fileList.innerHTML = html;
+}
+fileList.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.removeFile');
+  if(!btn) return;
+  const id = btn.getAttribute('data-id');
+  selectedFiles = selectedFiles.filter(x=>x.id!==id);
+  renderFileList(); updateSendBtn(); refreshBadge();
+});
+addBtn.addEventListener("click",()=>fileInput.click());
+fileInput.addEventListener("change", async()=>{ if(fileInput.files?.length){ await addFiles(fileInput.files); fileInput.value=''; }});
+
+['dragenter','dragover'].forEach(evt=>dropzone.addEventListener(evt,e=>{
+  e.preventDefault(); e.stopPropagation();
+  dropzone.classList.add('border-sky-400','bg-sky-50/30');
+}));
+['dragleave','drop'].forEach(evt=>dropzone.addEventListener(evt,e=>{
+  e.preventDefault(); e.stopPropagation();
+  dropzone.classList.remove('border-sky-400','bg-sky-50/30');
+}));
+dropzone.addEventListener('drop', async (e)=>{ const files=e.dataTransfer?.files; if(files?.length){ await addFiles(files); }});
+
+function startProgress(){startTimer(); let p=0; const id=setInterval(()=>{if(p<90){p+=Math.random()*5; setBar(p);}},250); return ()=>clearInterval(id);}
+
+async function fetchAnnotImages(stems) {
+  const base = (serverUrl.value||'').replace(/\/ocr$/i,''); // http://IP:PORT
+  const urls = [];
+  for (const stem of stems) {
+    try {
+      const r = await fetch(new URL(`/annot-list?stem=${encodeURIComponent(stem)}`, base).href);
+      if (r.ok) {
+        const arr = await r.json(); // mảng URL (giờ đã là tuyệt đối)
+        for (const u of arr) {
+          // xử lý cả khi u là tuyệt đối hoặc tương đối:
+          urls.push(new URL(u, base).href);
+        }
+      }
+    } catch {}
+  }
+  return urls;
+}
+function renderImages(urls) {
+  const grid = document.getElementById("imgGrid");
+  const st   = document.getElementById("imgStatus");
+  if (!urls.length) {
+    st.textContent = "Không có ảnh annotate.";
+    grid.innerHTML = "";
+    return;
+  }
+  st.textContent = `Có ${urls.length} ảnh annotate`;
+  grid.innerHTML = urls.map(src => `
+    <div class="cursor-zoom-in">
+      <img src="${src}" loading="lazy"
+           onerror="this.style.border='2px solid red'; this.title='Load lỗi: '+this.src;"
+           class="w-full rounded-xl border border-slate-200 shadow-sm hover:shadow-md">
+    </div>
+  `).join("");
+}
+
+function sanitizeStemFE(name) {
+  // bỏ ký tự < > : " / \ | ? *
+  name = name.replace(/[<>:"/\\|?*]+/g, "");
+  // bỏ dấu cách / dấu chấm đầu cuối
+  name = name.trim().replace(/^[.\s]+|[.\s]+$/g, "");
+  // cắt còn 150 ký tự
+  if (name.length > 150) name = name.substring(0, 150);
+  if (!name) name = crypto.randomUUID?.() || (Date.now()+"");
+  return name;
+}
+
+function guessStems() {
+  return selectedFiles
+    .filter(x => x.ok)
+    .map(x => {
+      let name = x.file.name;
+      // bỏ phần đuôi .pdf .jpg ...
+      name = name.replace(/\.[^.]+$/,"");
+      return sanitizeStemFE(name);
+    });
+}
+
+
+sendBtn.addEventListener('click', async ()=>{
+  const url=(serverUrl.value||'').trim();
+  const valid=selectedFiles.filter(x=>x.ok).map(x=>x.file);
+  if(valid.length===0) return setStatus('Không có file hợp lệ',false);
+
+  const fd=new FormData();
+  valid.forEach(f=>fd.append('files',f,f.name));
+
+  busy=true; updateSendBtn(); setBar(0); outputEl.value=''; setStatus(`Đang xử lý bằng ${activeOcrEngine.label}...`);
+  const stopProg=startProgress();
+
+  try{
+    const res=await fetch(url,{method:'POST',body:fd});
+    if(!res.ok){
+      const t=await res.text().catch(()=> ''); 
+      throw new Error('HTTP '+res.status+' | '+t);
+    }
+    const txt=await res.text();
+    outputEl.value=txt;
+    setBar(100); setStatus(`Hoàn tất bằng ${activeOcrEngine.label}`);
+
+    const stems = guessStems();
+    const imgs = await fetchAnnotImages(stems);
+    renderImages(imgs);
+
+  }catch(e){
+    setBar(100); setStatus('Lỗi: '+e.message,false);
+  }finally{
+    busy=false; updateSendBtn(); stopProg(); stopTimer();
+  }
+});
+
+pingBtn.addEventListener('click', async()=>{
+  const base=getServerBase();
+  pingMsg.textContent='Đang ping...';
+  try{ const r=await fetch(base+'/ping'); pingMsg.textContent='Ping: '+(await r.text()); await loadOcrEngineStatus(); }
+  catch(e){ pingMsg.textContent='Ping lỗi: '+e; }
+});
+
+copyBtn.addEventListener('click', async()=>{ try{await navigator.clipboard.writeText(outputEl.value||'');}catch{} copyBtn.textContent='Đã copy'; setTimeout(()=>copyBtn.textContent='Copy',1000); });
+saveBtn.addEventListener('click', ()=>{ const blob=new Blob([outputEl.value||''],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ket_qua_ocr.txt'; a.click(); URL.revokeObjectURL(a.href); });
+
+document.getElementById("imgGrid").addEventListener("click", e=>{
+  const img = e.target.closest("img");
+  if(!img) return;
+  const modal=document.getElementById("imgModal");
+  const prev = document.getElementById("imgPreview");
+  prev.src = img.src;
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+});
+document.getElementById("imgModal").addEventListener("click", ()=>{
+  const modal=document.getElementById("imgModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+});
+
+renderFileList(); refreshBadge(); updateSendBtn(); loadOcrEngineStatus();
+</script>
+</body>
+</html>

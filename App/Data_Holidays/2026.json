@@ -1,0 +1,34 @@
+{
+  "Master": {
+    "HolidaySettingCode": "NN/2026",
+    "Year": 2026
+  },
+  "Detail": {
+    "WeeklyDaysOff": {
+      "IsWorkMon": true,
+      "IsWorkTues": true,
+      "IsWorkWed": true,
+      "IsWorkThurs": true,
+      "IsWorkFri": true,
+      "IsWorkSat": false,
+      "IsWorkSun": false
+    },
+    "PublicHolidays": [
+      {
+        "HolidayName": "Nghỉ tết Tây",
+        "FromDate": "01/01/2026",
+        "ToDate": "01/01/2026"
+      },
+      {
+        "HolidayName": "Nghỉ lễ",
+        "FromDate": "30/04/2026",
+        "ToDate": "04/05/2026"
+      },
+      {
+        "HolidayName": "Nghỉ lễ quốc khánh",
+        "FromDate": "02/09/2026",
+        "ToDate": "03/09/2026"
+      }
+    ]
+  }
+}
