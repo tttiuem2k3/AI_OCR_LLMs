@@ -10,7 +10,6 @@ DECLARE @PromptBussiness NVARCHAR(MAX) = N'Bạn là AI kiểm tra tiêu chí "S
 
 --- Thông tin quy tắc so sánh
 DECLARE @PromptHandle NVARCHAR(MAX) = N'* CÁCH ĐỐI CHIẾU "Số tiền"
-
 Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 - Đọc toàn bộ dòng Số tiền yêu cầu trên ĐNTT.
 - Đọc số tiền yêu cầu trên ĐNTT.
@@ -23,28 +22,24 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 - Chấp nhận sai số không quá 10 đơn vị tiền tệ.
 - Nếu dữ liệu số tiền rỗng, null hoặc không parse được thành số thì coi là thiếu dữ liệu số tiền.
 
-Bước 2: Xác định nguồn chứng từ chính để đối chiếu
-- Chứng từ chính để đối chiếu số tiền là INVOICE và COMMERCIALINVOICE (nếu có)
-- CUSTOMSHEET dùng để kiểm tra bổ sung với INVOICE hoặc COMMERCIALINVOICE
-- RINGI dùng để kiểm tra hạn mức nếu có.
+Bước 2: Đối chiếu tổng số tiền yêu cầu trên ĐNTT
+- Đối chiếu Tổng số tiền yêu cầu trên ĐNTT khớp với tổng số tiền của INVOICE và COMMERCIALINVOICE (nếu có) và CUSTOMSHEET.
+- Đối chiếu các dòng số tiền yêu cầu khớp với INVOICE, CUSTOMSHEET tương ứng theo số hóa đơn.
+- Căn cứ các số tiền yêu cầu trên ĐNTT làm gốc, nếu phát hiện các loại chứng từ khác có thừa mẫu số tiền thì trả về CriteriaStatus = "NG" và cảnh báo.
 
-Bước 3: Đối chiếu tổng số tiền yêu cầu trên ĐNTT
-- Đối chiếu Tổng số tiền yêu cầu trên ĐNTT khớp với tổng số tiền của INVOICE và COMMERCIALINVOICE (nếu có).
-- Hoặc đối chiếu các dòng số tiền yêu cầu khớp với INVOICE, COMMERCIALINVOICE, CUSTOMSHEET tương ứng theo số hóa đơn.
-- Thỏa một trong 2 điều kiện là được, vì số tiền từng dòng yêu cầu trên ĐNTT có thể không khớp với các loại chứng từ, nhưng tổng tiền phải khớp.
+Bước 3: Đối chiếu CUSTOMSHEET
+- Mỗi CUSTOMSHEET bắt buộc phải khớp với một dòng số tiền yêu cầu trên ĐNTT hoặc một nhóm các dòng ĐNTT có tổng bằng số tiền CUSTOMSHEET.
+- Mỗi số tiền trên CUSTOMSHEET phải khớp với ít nhất một số tiền trên INVOICE hoặc COMMERCIALINVOICE (nếu có)
+- Nếu số tiền khớp với INVOICE hoặc COMMERCIALINVOICE nhưng không khớp trên ĐNTT thì trả CriteriaStatus = "NG"
 
-Bước 4: Đối chiếu CUSTOMSHEET nếu có
-- Nếu có CUSTOMSHEET, mỗi số tiền trên CUSTOMSHEET phải khớp với ít nhất một số tiền trên INVOICE hoặc COMMERCIALINVOICE (nếu có), hoặc khớp với dòng ĐNTT.
-- Nếu từng số tiền trên CUSTOMSHEET và INVOICE hoặc COMMERCIALINVOICE(nếu có) theo số hóa đơn khớp với nhau thì CriteriaStatus = "OK".
-
-Bước 5: Đối chiếu RINGI nếu có
-- Nếu có RINGI thì số tiền trên RINGI phải lớn hơn hoặc bằng tổng số tiền yêu cầu trên ĐNTT.
+Bước 4: Đối chiếu RINGI (nếu có)
+- Nếu có RINGI thì tổng số tiền trên RINGI phải nằm trong khoảng từ 90% đến 110% nhân với các dòng số tiền yêu cầu trên ĐNTT theo số Ringi.
 - Nếu không có RINGI thì bỏ qua đối chiếu RINGI, không cần giải thích.
 
-Bước 6: Quy tắc kết luận CriteriaStatus
+Bước 5: Quy tắc kết luận CriteriaStatus
 1. Nếu thiếu dữ liệu số tiền bắt buộc cần dùng để đối chiếu thì CriteriaStatus = "BLANK".
-2. Nếu từng dòng ĐNTT khớp trực tiếp với chứng từ hoặc tổng tiền khớp thì CriteriaStatus = "OK".
-3. Nếu có điều kiện đối chiếu số tiền không khớp thì CriteriaStatus = "NG".
+2. Nếu có bất kỳ điều kiện đối chiếu số tiền nào không khớp thì CriteriaStatus = "NG".
+3. Nếu tất cả điều kiện đối chiếu số tiền đều khớp và thỏa mãn thì CriteriaStatus = "OK".
 4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
 * QUY TẮC FILE NAME
@@ -77,7 +72,7 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 ***{{/each}}
 1. Dữ liệu đề nghị thanh toán (ĐNTT):
 {{#each details}}
-{ Số hóa đơn: {{this.InvoiceNo}} | Số tiền yêu cầu: {{this.RequestAmount}} }
+{ Số hóa đơn: {{this.InvoiceNo}} | Số tiền yêu cầu: {{this.RequestAmount}} | Số Ringi: {{this.RingiNo}} }
 {{/each}}
 {{#each datas}}
 => Tổng số tiền yêu cầu: {{this.TotalAmount}}

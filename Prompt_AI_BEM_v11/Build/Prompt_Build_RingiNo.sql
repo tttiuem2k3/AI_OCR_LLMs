@@ -22,7 +22,7 @@ Bước 2: Đối chiếu
 1. Số Ringi trên ĐNTT phải được đối chiếu với số Ringi trên các chứng từ RINGI.
 2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số Ringi => CriteriaStatus = "BLANK".
 3. Nếu có ít nhất một dữ liệu số Ringi trên RINGI không khớp với số Ringi trên ĐNTT => CriteriaStatus = "NG".
-4. Nếu có đủ dữ liệu và số Ringi trên ĐNTT khớp với toàn bộ dữ liệu số Ringi trên RINGI => CriteriaStatus = "OK".
+4. Nếu có đủ dữ liệu và số Ringi trên ĐNTT khớp với toàn bộ dữ liệu số Ringi trên RINGI (trường hợp số RINGI được chia thành nhiều phần cũng được xem là khớp, ví dụ: có Số Ringi trên ĐNTT là VNNK-1304-41791, với các chứng từ RINGI có số Ringi lần lượt là VNNK-1304-41791/01, VNNK-1304-41791/02, VNNK-1304-41791/03 vẫn được xem là khớp nhau vì cùng chỉ chủ thể số Ringi tại ĐNTT) => CriteriaStatus = "OK". 
 5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
 * QUY TẮC FILE NAME

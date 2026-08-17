@@ -14,7 +14,7 @@ Thực hiện đúng thứ tự:
 DECLARE @PromptHandle NVARCHAR(MAX) = N'* QUY TẮC TÍNH "HẠN THANH TOÁN CHUẨN"
 I. NGUYÊN TẮC BẮT BUỘC
 - Phải đọc hết toàn bộ dữ liệu đầu vào trước khi tính toán.
-- Chỉ dùng PaymentTerm từ chứng từ có Loại chứng từ = PO.
+- Dùng diễn giải từ dữ liệu ĐNTT hoăc PaymentTerm từ chứng từ có Loại chứng từ PO.
 - Không dùng nguồn ngày khác với nguồn được quy định.
 - Không được dừng sau khi tìm thấy một hoặc một số ngày mốc.
 - Không được tự tạo ngày không tồn tại trong dữ liệu.
@@ -56,13 +56,13 @@ IV. XÁC ĐỊNH NGUỒN NGÀY MỐC
 1. Nếu Nguồn hình thành = "Đặt cọc/trả trước":
 - Ngày mốc là Ngày PO từ chứng từ PO.
 
-2. Nếu Nguồn hình thành = "Kế thừa công nợ":
-- Điều kiện có AFTER DELIVER, CLEARANCE, THÔNG QUAN: => Ngày mốc là Ngày thông quan từ CUSTOMSHEET.
-- Điều kiện có NGHIỆM THU, BBNT, ACCEPTANCE, INSPECTION REPORT: => Ngày mốc là Ngày BBNT từ INSPECTION.
-- Điều kiện có BOL, BILL: => Ngày mốc là Ngày BOL từ BILL.
-- Điều kiện có BÀN GIAO hoặc HANDOVER: => Ngày mốc là Ngày bàn giao từ HANDOVER.
-- Nếu điều kiện có cả nhóm nghiệm thu và bàn giao thì lấy ngày hợp lệ từ cả INSPECTION và HANDOVER.
-
+2. Nếu Nguồn hình thành = "Kế thừa công nợ" và Diễn giải trên ĐNTT hoặc PaymentTerm trên PO:
+- Có chứa: advance after PO, PO, ...  => Ngày mốc là Ngày PO.
+- Có chứa: sau khi giao hàng, After delivery, AFTER DELIVER, CLEARANCE, THÔNG QUAN,... => Ngày mốc là Ngày thông quan từ CUSTOMSHEET.
+- Có chứa: Agains BL date, sau xx ngày BOL, BOL, BILL,...  => Ngày mốc là Ngày BOL từ BILL.
+- Có chứa: sau nghiệm thu, NGHIỆM THU, BBNT, ACCEPTANCE, INSPECTION REPORT, inspection report ... => Ngày mốc là Ngày BBNT từ INSPECTION.
+- Có chứa: sau BÀN GIAO, HANDOVER,... => Ngày mốc là Ngày bàn giao từ HANDOVER.
+- Có chứa: cả nhóm nghiệm thu và bàn giao thì lấy ngày hợp lệ từ cả INSPECTION và HANDOVER.
 - Nếu không xác định được nguồn ngày mốc thì DueDate = null.
 
 V. THU THẬP NGÀY MỐC
@@ -101,7 +101,7 @@ Sau khi tính:
 VII. VÍ DỤ MINH HỌA
 Ví dụ 1 - đặt cọc không có số ngày:
 - Nguồn hình thành = "Đặt cọc/trả trước".
-- PaymentTerm = "30% advance after PO".
+- Diễn giải hoặc PaymentTerm  = "30% advance after PO".
 - Lần thanh toán = "Lần 1".
 - Ngày PO = "07/01/2027".
 - Số 30 là tỷ lệ thanh toán, không phải số ngày.
@@ -110,7 +110,7 @@ Ví dụ 1 - đặt cọc không có số ngày:
 
 Ví dụ 2 - chọn đúng đợt thanh toán:
 - Nguồn hình thành = "Kế thừa công nợ".
-- PaymentTerm = "20% advance, 80% within 45 days after clearance".
+- Diễn giải hoặc PaymentTerm = "20% advance, 80% within 45 days after clearance".
 - Lần thanh toán = "Lần 2".
 - Điều kiện được chọn = "80% within 45 days after clearance".
 - Ngày thông quan ban đầu:
@@ -121,7 +121,7 @@ Ví dụ 2 - chọn đúng đợt thanh toán:
 
 Ví dụ 3 - nghiệm thu:
 - Nguồn hình thành = "Kế thừa công nợ".
-- PaymentTerm = "50% within 15 days after acceptance".
+- Diễn giải hoặc PaymentTerm = "50% within 15 days after acceptance".
 - Ngày BBNT = "11/08/2027".
 - DueDate = "26/08/2027".
 
@@ -201,7 +201,7 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 { Loại chứng từ: HANDOVER | Ngày bàn giao: {{this.HandoverDate}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{#if (eq this.SectionType "BILL")}}
-{ Loại chứng từ: BILL | Ngày BOL: {{this.BillDate}} | Tên file: {{this.FileName}} }
+{ Loại chứng từ: BILL | Ngày BOL/BILL: {{this.BillDate}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{/each}}';
 

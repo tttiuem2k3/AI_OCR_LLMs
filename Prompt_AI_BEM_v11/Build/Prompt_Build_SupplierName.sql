@@ -26,7 +26,7 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
     * JSC.
     * CÔNG TY TNHH.
     * CTY CP.
-- Nếu tên nhà cung cấp xuất hiện song ngữ thì chỉ lấy phần tên chính có khả năng đối chiếu với tên trên ĐNTT để so sánh.
+- Nếu tên nhà cung cấp xuất hiện song ngữ thì chỉ lấy phần tên chính có khả năng đối chiếu với tên trên ĐNTT để so sánh, ví dụ Tên nhà cung cấp: CÔNG TY CỔ PHẦN KỸ THƯƠNG CSC và CSC Technical and Trade JSC được hiểu là khớp nhau 
 
 Bước 2: Xác định nhóm chứng từ cần đối chiếu
 1. Nếu nguồn hình thành là "Đặt cọc/trả trước":

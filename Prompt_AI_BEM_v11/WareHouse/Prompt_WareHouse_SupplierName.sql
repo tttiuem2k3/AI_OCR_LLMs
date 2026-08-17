@@ -75,7 +75,7 @@ Bước 3: Xác định tên định danh chính của nhà cung cấp
 - Không được coi "BRANCH OF" khác bản chất với "CHI NHANH".
 - Không được coi "CO.,LTD" khác bản chất với "CONG TY TNHH".
 
-Bước 4: Quy tắc tên tương đương đặc biệt / Supplier Alias
+Bước 4: Quy tắc tên tương đương đặc biệt
 - Một nhà cung cấp có thể có nhiều tên khác nhau:
   + Tên tiếng Anh.
   + Tên tiếng Việt.
@@ -86,25 +86,13 @@ Bước 4: Quy tắc tên tương đương đặc biệt / Supplier Alias
 - Nếu các tên thuộc cùng nhóm tương đương đặc biệt thì phải xem là cùng một nhà cung cấp.
 - Không được kết luận NG chỉ vì khác tiếng Anh/tiếng Việt nếu vẫn là cùng một công ty.
 
-Danh sách tên tương đương đặc biệt:
-1. Nhóm MEIKO Việt Nam:
-   - MEIKO ELECTRONICS DEVELOPMENT CO., LTD.
-   - MEIKO ELECTRONICS VIETNAM CO., LTD.
-   - CONG TY TNHH DIEN TU MEIKO VIET NAM
-   - MEIKO VIỆT NAM
-   - MEIKO VIET NAM
-   - MEIKO VIETNAM
-- Với toàn bộ tên thuộc nhóm MEIKO Việt Nam, chuẩn hóa tên định danh chính về cùng một giá trị: "MEIKO VIET NAM".
-- Ví dụ ĐNTT hoặc chứng từ ghi "MEIKO ELECTRONIC DEVELOPMENT CO., LTD." và chứng từ khác ghi "CÔNG TY TNHH ĐIỆN TỪ MEIKO VIỆT NAM" thì phải xem là cùng nhà cung cấp.
-- Chỉ kết luận NG nếu xuất hiện tên doanh nghiệp khác rõ ràng, không thuộc nhóm tương đương này.
-
 Bước 5: Quy tắc xử lý tên viết tắt hoặc tên rút gọn
 - Nếu một chứng từ (đặc biệt là PO) ghi tên nhà cung cấp ngắn hơn nhưng vẫn chứa cùng tên định danh chính và không xuất hiện tên doanh nghiệp khác thì không được kết luận NG.
 - Nếu tên rút gọn vẫn thuộc cùng nhóm tên tương đương đặc biệt thì phải xem là OK.
 
 Bước 6: Quy tắc kết luận CriteriaStatus
 1. Nếu ĐNTT thiếu tên nhà cung cấp hoặc chứng từ chính cần kiểm tra thiếu tên nhà cung cấp thì CriteriaStatus = "BLANK".
-2. Nếu ĐNTT và các chứng từ chính cùng chỉ về một nhà cung cấp hoặc thuộc cùng nhóm tên tương đương đặc biệt sau chuẩn hóa(mức độ tương đồng ký tự >= 80% sau chuẩn hóa) thì CriteriaStatus = "OK". 
+2. Nếu ĐNTT và các chứng từ chính cùng chỉ về một nhà cung cấp hoặc thuộc cùng nhóm tên tương đương đặc biệt sau chuẩn hóa(mức độ tương đồng trên tổng số lượng ký tự >= 80% sau chuẩn hóa) thì CriteriaStatus = "OK". 
 3. Chỉ kết luận CriteriaStatus = "NG" khi xuất hiện tên doanh nghiệp khác rõ ràng, khác thực thể nhà cung cấp, không thuộc nhóm tên tương đương đặc biệt và không thể quy về cùng tên định danh chính.
 4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 

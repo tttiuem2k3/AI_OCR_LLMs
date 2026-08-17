@@ -18,11 +18,11 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
   + Chuyển toàn bộ dữ liệu sang IN HOA.
   + Bỏ khoảng trắng thừa ở đầu, cuối và giữa các cụm không có ý nghĩa phân biệt.
   + Bỏ các ký tự đặc biệt như "-", "/", ".", "_", ":" khi không làm thay đổi mã nhận diện chính.
-- Chỉ chuẩn hóa để đối chiếu, không được tự tạo số hợp đồng mới, ví dụ có 2 số hợp đồng CT-01-010 và CSC-MEI-CT-01-010 được xem là khớp nhau sau chuẩn hóa.
+- Chỉ chuẩn hóa để đối chiếu, không được tự tạo số hợp đồng mới.
 - Nếu dữ liệu nguồn hình thành, lần thanh toán hoặc số hợp đồng rỗng, null thì coi là "không có dữ liệu để đối chiếu số hợp đồng".
 
 Bước 2: Xác định nhóm chứng từ cần đối chiếu
-1. Nếu nguồn hình thành là "Đặt cọc/trả trước": đối chiếu số hợp đồng trên ĐNTT khớp với số hợp đồng trên CONTRACT.
+1. Nếu nguồn hình thành là "Đặt cọc/trả trước": đối chiếu số hợp đồng trên ĐNTT khớp với số hợp đồng trên CONTRACT, ví dụ có 3 số hợp đồng là CT-01-010, CSC-CT-01-010 và CSC-MEI-CT-01-010 đều được xem là khớp nhau sau chuẩn hóa.
 2. Nếu nguồn hình thành là "Kế thừa công nợ" thì xác định nhóm chứng từ theo lần thanh toán như sau:
    - Lần thanh toán là "Lần 1" hoặc "Lần 2": đối chiếu số hợp đồng trên ĐNTT với số hợp đồng trên Loại biên bản bàn giao: Bàn giao vật tư.
    - Lần thanh toán là "Trước lần cuối": đối chiếu số hợp đồng trên ĐNTT với số hợp đồng trên Biên bản bàn giao - Handover và Biên bản nghiệm thu hệ thống.

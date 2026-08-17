@@ -42,7 +42,7 @@ Bước 2: Đối chiếu
 7. Nếu số hóa đơn trên ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE sau chuẩn hóa => CriteriaStatus = "NG".
 8. Nếu số hóa đơn trên CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE sau chuẩn hóa => CriteriaStatus = "NG".
 9. Nếu thiếu dữ liệu số hóa đơn ở chứng từ cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-10. Nếu các điều kiện đối chiếu hợp lệ => CriteriaStatus = "OK".
+10. Nếu các điều kiện đối chiếu hợp lệ (mức độ tương đồng trên tổng số lượng ký tự >= 80% sau chuẩn hóa) => CriteriaStatus = "OK".
 11. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
 * QUY TẮC FILE NAME
