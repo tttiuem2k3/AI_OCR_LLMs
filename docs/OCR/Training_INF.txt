@@ -1,0 +1,3 @@
+https://www.kaggle.com/code/thnhtrn412/train-paddleocr-24072026
+
+==> Có thể vào link trên để copy và training trên môi trường kaggle.

@@ -148,13 +148,29 @@ logger.info("=== IIS SERVER OCR START ===")
 # NOTE: settings/config đã gom về App/settings_all.py
 settings = get_settings_all()
 
-from .OCR_BE.office_text import extract_office_text
+from .OCR_BE.office_text import OFFICE_TEXT_EXTENSIONS, extract_office_text
+from .OCR_BE.output_artifacts import build_unique_artifact_stem, iter_file
 from .OCR_BE.process_OCR import split_ocr_text
 from .Rules_AI_BEM_MEIKO import clear_holiday_setting_cache, process_ai_llms_models_rules
 
-# Strictly forbid CPU for OCR as well
-if str(getattr(settings, "DEVICE", "gpu")).lower() != "gpu":
-    raise RuntimeError("CPU is forbidden. Please set DEVICE=gpu in App/settings_all.py or environment.")
+# Thiết bị OCR được điều khiển tập trung bởi settings_all.DEVICE ("cpu" hoặc "gpu").
+# LLM/CUDA vẫn dùng cấu hình GPU riêng, không phụ thuộc công tắc này.
+_ocr_device = settings.ocr_device
+logger.info("OCR runtime device=%s", _ocr_device)
+
+# CPU OCR: cấu hình backend trước khi Paddle/PaddleX khởi tạo model.
+# LLM qua Ollama vẫn dùng GPU độc lập và không phụ thuộc các biến này.
+if _ocr_device == "cpu":
+    _ocr_cpu_threads = max(1, int(getattr(settings, "OCR_CPU_THREADS", 32)))
+    os.environ["OMP_NUM_THREADS"] = str(_ocr_cpu_threads)
+    os.environ["MKL_NUM_THREADS"] = str(_ocr_cpu_threads)
+    if bool(getattr(settings, "OCR_CPU_DISABLE_MKLDNN", True)):
+        os.environ["FLAGS_use_mkldnn"] = "0"
+    logger.info(
+        "OCR CPU runtime configured: threads=%d disable_mkldnn=%s",
+        _ocr_cpu_threads,
+        bool(getattr(settings, "OCR_CPU_DISABLE_MKLDNN", True)),
+    )
 
 OUTPUT_ROOT = str(Path(settings.OUTPUT_ROOT).resolve())
 NORMALIZE_TXT_PATH = (Path(PROJECT_ROOT) / "Outputs" / "normalize.txt").resolve()
@@ -235,7 +251,7 @@ def _on_error(e):
 # =============================================================================
 PDF_EXTS    = {".pdf"}
 IMAGE_EXTS  = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"}
-OFFICE_EXTS = {".docx", ".xlsx", ".xls", ".pptx"}
+OFFICE_EXTS = set(OFFICE_TEXT_EXTENSIONS)
 HTM_EXTS    = {".htm", ".html"}
 ALLOWED_EXTS = PDF_EXTS | IMAGE_EXTS | OFFICE_EXTS | HTM_EXTS
 
@@ -279,6 +295,7 @@ else:
     from .OCR_BE.ocr_engine_iis import OCREngine
     _ocr_engine_key = "ppstructure_v3"
     _ocr_engine_label = "PPStructureV3"
+from .OCR_BE.pdf_errors import pdf_data_format_error_pages
 _engine = None
 _use_ollama_llm = bool(getattr(settings_all, "LLM_USE_OLLAMA", False))
 _autoload_llm_at_startup = (not _use_ollama_llm) and str(
@@ -392,14 +409,6 @@ def ocr_upload():
     txt_dir = Path(settings.OUTPUT_ROOT) / "txt"
     txt_dir.mkdir(parents=True, exist_ok=True)
 
-    def _iter_file(path: Path, chunk=65536):
-        with path.open("rb") as fh:
-            while True:
-                data = fh.read(chunk)
-                if not data:
-                    break
-                yield data
-
     # --- 1 file ---
     if len(uploads) == 1:
         up = uploads[0]
@@ -411,8 +420,9 @@ def ocr_upload():
             return jsonify(detail=f"Chỉ hỗ trợ: {', '.join(sorted(ALLOWED_EXTS))}"), 400
 
         stem = sanitize_stem(Path(fname).stem)
-        # Always re-run OCR to reflect updated content, even if a file with the
-        # same name was processed before. The new output will overwrite the old.
+        artifact_stem = build_unique_artifact_stem(stem, uuid.uuid4().hex)
+        # Always re-run OCR and keep each request's output isolated, even when
+        # multiple uploads have the same original filename.
 
         tmp = Path(TEMP_DIR) / f"{uuid.uuid4().hex}{ext}"
         try:
@@ -430,16 +440,22 @@ def ocr_upload():
                 logger.info("Extract office/html text done in %.2fs", time.time() - t1)
             else:
                 logger.info("OCR infer begin: %s", tmp)
-                pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=stem))
+                try:
+                    pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=artifact_stem))
+                except Exception as error:
+                    pages = pdf_data_format_error_pages(error) if ext in PDF_EXTS else None
+                    if pages is None:
+                        raise
+                    logger.warning("Invalid PDF data format: %s; returning OCR error text", fname)
                 logger.info("OCR infer done in %.2fs", time.time() - t1)
 
-            txt_path = _engine.save_txt(pages, stem)
+            txt_path = _engine.save_txt(pages, artifact_stem)
             logger.info("Saved TXT: %s (size=%d)", txt_path, Path(txt_path).stat().st_size)
         finally:
             safe_unlink(tmp)
 
-        cd = build_content_disposition(Path(txt_path).name)
-        return Response(_iter_file(Path(txt_path)),
+        cd = build_content_disposition(f"{stem}.txt")
+        return Response(iter_file(Path(txt_path)),
                         headers={"Content-Disposition": cd},
                         mimetype="text/plain; charset=utf-8")
 
@@ -484,7 +500,13 @@ def ocr_upload():
                     continue
             else:
                 t2 = time.time()
-                pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=stem))
+                try:
+                    pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=stem))
+                except Exception as error:
+                    pages = pdf_data_format_error_pages(error) if ext in PDF_EXTS else None
+                    if pages is None:
+                        raise
+                    logger.warning("Invalid PDF data format: %s; adding OCR error text", fname)
                 logger.info("Infer %.2fs for %s", time.time() - t2, fname)
 
             for pi, page in enumerate(pages, start=1):
@@ -500,15 +522,8 @@ def ocr_upload():
     Path(out_path).write_text("\n".join(result_lines), encoding="utf-8")
     logger.info("Batch saved: %s (size=%d)", out_path, Path(out_path).stat().st_size)
 
-    def _iter_file(path: Path, chunk=65536):
-        with path.open("rb") as fh:
-            while True:
-                data = fh.read(chunk)
-                if not data: break
-                yield data
-
     cd = build_content_disposition(out_path.name)
-    return Response(_iter_file(out_path),
+    return Response(iter_file(out_path),
                     headers={"Content-Disposition": cd},
                     mimetype="text/plain; charset=utf-8")
 
@@ -855,22 +870,24 @@ def _ocr_hard_unload() -> None:
     except Exception:
         pass
 
-    # OCR is backed by Paddle, so PyTorch's CUDA allocator cannot release its
-    # cached blocks. Explicitly flush Paddle after dropping the pipeline.
-    try:
-        import paddle  # type: ignore
+    # Chỉ đụng Paddle CUDA khi OCR thực sự chạy GPU.
+    # Ở CPU mode, package paddlepaddle-gpu vẫn có thể báo compiled_with_cuda=True,
+    # nhưng OCR không được synchronize/empty-cache GPU của Ollama.
+    if _ocr_device == "gpu":
+        try:
+            import paddle  # type: ignore
 
-        if paddle.is_compiled_with_cuda():
-            try:
-                paddle.device.synchronize()
-            except Exception:
-                pass
-            try:
-                paddle.device.cuda.empty_cache()
-            except Exception:
-                pass
-    except Exception:
-        pass
+            if paddle.is_compiled_with_cuda():
+                try:
+                    paddle.device.synchronize()
+                except Exception:
+                    pass
+                try:
+                    paddle.device.cuda.empty_cache()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     _llms_hard_vram_cleanup(rounds=2)
     logger.info(
@@ -900,32 +917,35 @@ def _ensure_ocr_ready_for_request() -> None:
             logger.info("OCR lazy reload done in %.2fs", time.time() - t0)
         _resource_mode = "mixed"
 
-    try:
-        import paddle  # type: ignore
-
+    # GPU cleanup chỉ dành cho OCR GPU. CPU OCR không được tạo/đụng CUDA context,
+    # để Ollama có thể sử dụng GPU độc lập.
+    if _ocr_device == "gpu":
         try:
-            if paddle.is_compiled_with_cuda():
-                try:
-                    paddle.device.synchronize()
-                except Exception:
-                    pass
-                paddle.device.cuda.empty_cache()
-        except Exception:
-            pass
-    except Exception:
-        pass
+            import paddle  # type: ignore
 
-    try:
-        import torch  # type: ignore
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
             try:
-                torch.cuda.ipc_collect()
+                if paddle.is_compiled_with_cuda():
+                    try:
+                        paddle.device.synchronize()
+                    except Exception:
+                        pass
+                    paddle.device.cuda.empty_cache()
             except Exception:
                 pass
-    except Exception:
-        pass
+        except Exception:
+            pass
+
+        try:
+            import torch  # type: ignore
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                try:
+                    torch.cuda.ipc_collect()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 
 def _llms_optional_pressure_unload() -> None:

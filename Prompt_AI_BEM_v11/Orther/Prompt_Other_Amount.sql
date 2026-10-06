@@ -9,52 +9,40 @@ DECLARE @PromptBussiness NVARCHAR(MAX) = N'Bạn là AI kiểm tra tiêu chí "S
 
 --- Thông tin quy tắc so sánh
 DECLARE @PromptHandle NVARCHAR(MAX) = N'* CÁCH ĐỐI CHIẾU "Số tiền"
-Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
-- Đọc dữ liệu Số tiền yêu cầu trên ĐNTT.
-- Đọc dữ liệu trên các mẫu dữ liệu đầu vào.
-- Chuẩn hóa số tiền bằng cách chuyển giá trị số tiền về dạng số thống nhất để đối chiếu.
+Bước 1: Chuẩn hóa dữ liệu
+- Đọc Số tiền yêu cầu trên ĐNTT và số tiền trên các chứng từ được chọn theo rule.
+- Chuẩn hóa về dạng số; loại bỏ ký hiệu tiền và dấu phân tách hàng nghìn nhưng phải giữ đúng phần thập phân.
+- Cho phép sai lệch do làm tròn nếu sai lệch không quá 0.1% hoặc không quá 1000 VND.
+- Dữ liệu rỗng, null, bằng 0 không có căn cứ hoặc không đọc được được coi là thiếu dữ liệu số tiền.
 
-- Cho phép sai lệch nhỏ do làm tròn trong một trong hai ngưỡng sau:
-  + Sai lệch nhỏ hơn hoặc bằng 0.1 phần trăm.
-  + Hoặc sai lệch nhỏ hơn hoặc bằng 1000 VND.
-- Nếu dữ liệu số tiền rỗng, null thì coi là "không có dữ liệu số tiền".
+Bước 2: Xác định số tiền theo nguồn hình thành
+1. Nguồn hình thành là Đặt cọc/trả trước:
+   - Đối chiếu Số tiền trên ĐNTT với số tiền hoặc điều kiện thanh toán trên CONTRACT.
+   - Nếu CONTRACT quy định tỷ lệ trả trước thì tính số tiền hợp lệ bằng Giá trị hợp đồng nhân Tỷ lệ trả trước.
+2. Nguồn hình thành là Kế thừa công nợ:
+   - Xác định đúng số tiền của đợt thanh toán hiện tại theo điều khoản thanh toán trên CONTRACT.
+   - Đối chiếu Số tiền ĐNTT với số tiền của cùng đợt trên INVOICE đối với hồ sơ trong nước hoặc COMMERCIALINVOICE đối với hồ sơ nước ngoài.
+   - Tiền CONTRACT phải nằm trong khoảng từ 90% đến 110% tổng tiền RINGI. Tương đương: CONTRACT >= 90% tổng tiền RINGI và CONTRACT <= 110% tổng tiền RINGI.
+   - Số tiền ĐNTT phải nhỏ hơn hoặc bằng số tiền trên INVOICE hoặc COMMERCIALINVOICE của đợt thanh toán hiện tại.
+3. Nếu CONTRACT có nhiều đợt hoặc nhiều tỷ lệ thanh toán, chỉ so sánh dữ liệu thuộc đúng đợt hiện tại theo mô tả ĐNTT và điều khoản CONTRACT.
 
-Bước 2: Xác định số tiền hợp lệ theo CONTRACT
-1. Nếu CONTRACT có điều khoản thanh toán thể hiện tỷ lệ thanh toán theo từng giai đoạn hoặc từng đợt thì phải xác định đúng tỷ lệ thanh toán của đợt hiện tại.
-2. Việc xác định đợt hiện tại phải căn cứ vào mô tả trên ĐNTT và nội dung điều khoản thanh toán trên CONTRACT.
-3. Số tiền hợp lệ theo CONTRACT được tính như sau:
-   - Số tiền hợp lệ = Tổng giá trị hợp đồng x Tỷ lệ thanh toán của đợt hiện tại.
-4. Nếu CONTRACT không có điều khoản thanh toán theo tỷ lệ hoặc không xác định được đợt thanh toán hiện tại thì sử dụng tổng giá trị hợp đồng để đối chiếu.
-5. Nếu có nhiều đợt thanh toán thì chỉ được so sánh các chứng từ thuộc cùng giai đoạn thanh toán.
-6. Nếu không xác định được số tiền hợp lệ từ CONTRACT khi dữ liệu này cần dùng để kết luận => CriteriaStatus = "BLANK".
-
-Bước 3: Đối chiếu
-1. Số tiền trên ĐNTT phải được đối chiếu với số tiền hợp lệ theo CONTRACT.
-2. Nếu có INVOICE thì số tiền trên INVOICE phải được đối chiếu với số tiền của cùng giai đoạn thanh toán.
-3. Nếu có RINGI thì số tiền trên RINGI phải được đối chiếu với số tiền của cùng giai đoạn thanh toán, số tiền trên RINGI có thể lớn hơn. Nếu số tiền trên RINGI nhỏ hơn DNTT thì NG.
-4. Nếu thanh toán 100 phần trăm sau nghiệm thu thì số tiền trên ĐNTT, CONTRACT, INVOICE và RINGI dùng để đối chiếu phải cùng một giá trị, trừ sai lệch làm tròn trong ngưỡng cho phép.
-5. Nếu bất kỳ dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền => CriteriaStatus = "BLANK".
-6. Nếu có ít nhất một điều kiện đối chiếu sai => CriteriaStatus = "NG".
-7. Nếu có đủ dữ liệu và tất cả điều kiện đối chiếu đều đúng => CriteriaStatus = "OK".
-8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+Bước 3: Kết luận
+1. Thiếu dữ liệu bắt buộc hoặc không xác định được số tiền hợp lệ theo điều khoản CONTRACT => CriteriaStatus = "BLANK".
+2. Có đủ dữ liệu nhưng vi phạm ít nhất một điều kiện số tiền, tỷ lệ 90%-110% hoặc giới hạn ĐNTT không vượt hóa đơn => CriteriaStatus = "NG".
+3. Có đủ dữ liệu và toàn bộ điều kiện đều đúng => CriteriaStatus = "OK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
 * QUY TẮC FILE NAME
-"FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền hợp lệ.
-- Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số tiền.
-- Nếu OK thì trả chuỗi rỗng "".
-- Trường hợp nếu nhiều file thì:
-  + Phân tách các file bằng dấu phẩy ", ".
-  + Giữ theo đúng thứ tự xuất hiện.
-  + Loại bỏ tên file bị trùng lặp lại.
-  + Khi đủ 10 tên file thì kết thúc => bỏ qua các tên file còn lại.
+- BLANK: liệt kê file thiếu số tiền hoặc thiếu điều khoản cần dùng để tính.
+- NG: liệt kê file có số tiền hoặc điều kiện không khớp.
+- OK: trả chuỗi rỗng "".
+- Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số tiền:
-- Nếu BLANK do thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền hợp lệ => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
-- Nếu NG do không khớp số tiền => nêu rõ không khớp số tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
-- Nếu OK => nêu ngắn gọn rằng "Số tiền đã hoàn toàn khớp với nhau."
-- Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
+- BLANK: nêu rõ chứng từ và file thiếu dữ liệu hoặc thiếu căn cứ tính số tiền.
+- NG: nêu rõ điều kiện bị sai giữa ĐNTT, CONTRACT, RINGI và INVOICE hoặc COMMERCIALINVOICE.
+- OK: ghi "Số tiền đã hoàn toàn phù hợp với các chứng từ và điều kiện thanh toán."
+- Description phải phù hợp với CriteriaStatus.';
 
 --- Dữ liệu đầu vào 
 DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
@@ -67,19 +55,25 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 }
 ***{{/each}}
 1. Dữ liệu đề nghị thanh toán (ĐNTT):
+{{#each datas}}
+{ Nguồn hình thành: {{this.FormationName}} | Lần thanh toán: {{this.NumberOfPayments}} }
+{{/each}}
 {{#each details}}
 { Số tiền yêu cầu: {{this.RequestAmount}} }
 {{/each}}
 
 2. Dữ liệu đầu vào:
 {{#each dataFiles}}
-{{#if (eq this.SectionType "INVOICE")}}
-{ Loại chứng từ: {{this.SectionType}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
-{{/if}}
 {{#if (eq this.SectionType "CONTRACT")}}
 { Loại chứng từ: {{this.SectionType}} | Tổng giá trị hợp đồng: {{this.Amount}} | Điều khoản thanh toán: {{this.PaymentTerm}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{#if (eq this.SectionType "RINGI")}}
+{ Loại chứng từ: {{this.SectionType}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
+{{/if}}
+{{#if (eq this.SectionType "INVOICE")}}
+{ Loại chứng từ: {{this.SectionType}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
+{{/if}}
+{{#if (eq this.SectionType "COMMERCIALINVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{/each}}';

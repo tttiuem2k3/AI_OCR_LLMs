@@ -1,0 +1,6 @@
+*** Begin Patch
+*** Update File: .codex_tmp/build_t09_artifact_update_plan_20261002.py
+@@
+-wb = load_workbook(BOOK, read_only=True, data_only=False)
++wb = load_workbook(BOOK, read_only=False, data_only=False)
+*** End Patch

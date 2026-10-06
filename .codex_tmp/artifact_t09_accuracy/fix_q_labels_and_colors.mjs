@@ -1,0 +1,32 @@
+import { FileBlob, SpreadsheetFile } from '@oai/artifact-tool';
+
+const input = String.raw`E:\Asoft\AI_BEM\AI_BEM_Check_T08_09\DATA_BEM AI_MEIKO_30092026.xlsx`;
+const output = String.raw`E:\Asoft\AI_BEM\BEM_AI_PROJECT\.codex_tmp\artifact_t09_accuracy\DATA_BEM AI_MEIKO_30092026_candidate_3.xlsx`;
+const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(input));
+const sheet = workbook.worksheets.getItem('Kết quả tháng 09 và xử lý');
+
+const statusUpdates = [
+  [963, '- AI đã trả NG theo các tiêu chí DB mới nhất.\n- Phiếu chưa có kết quả duyệt nên tạm ghi nhận theo Rules hiện hành.', '- AI trả lời đúng theo Rules', '- Theo dõi lại sau khi khách duyệt phiếu; nếu khách duyệt OK thì cần rà lại Rules/Prompt tương ứng.', 1, '- DB mới ghi nhận 5 tiêu chí NG.\n- Chưa có kết quả duyệt cuối cùng của khách.'],
+  [964, '- AI đã trả NG theo các tiêu chí DB mới nhất.\n- Phiếu chưa có kết quả duyệt nên tạm ghi nhận theo Rules hiện hành.', '- AI trả lời đúng theo Rules', '- Theo dõi lại sau khi khách duyệt phiếu; nếu khách duyệt OK thì cần rà lại Rules/Prompt tương ứng.', 1, '- DB mới ghi nhận 2 tiêu chí NG.\n- Chưa có kết quả duyệt cuối cùng của khách.'],
+  [965, '- AI đã trả NG theo các tiêu chí DB mới nhất.\n- Phiếu chưa có kết quả duyệt nên tạm ghi nhận theo Rules hiện hành.', '- AI trả lời đúng theo Rules', '- Theo dõi lại sau khi khách duyệt phiếu; nếu khách duyệt OK thì cần rà lại Rules/Prompt tương ứng.', 1, '- DB mới ghi nhận 2 tiêu chí NG.\n- Chưa có kết quả duyệt cuối cùng của khách.'],
+  [966, '- AI đã trả NG theo các tiêu chí DB mới nhất.\n- Phiếu chưa có kết quả duyệt nên tạm ghi nhận theo Rules hiện hành.', '- AI trả lời đúng theo Rules', '- Theo dõi lại sau khi khách duyệt phiếu; nếu khách duyệt OK thì cần rà lại Rules/Prompt tương ứng.', 1, '- DB mới ghi nhận 2 tiêu chí NG.\n- Chưa có kết quả duyệt cuối cùng của khách.'],
+];
+for (const [row, p, q, r, s, t] of statusUpdates) {
+  sheet.getRange(`P${row}:T${row}`).values = [[p, q, r, s, t]];
+}
+
+const qValues = sheet.getRange('Q3:Q966').values;
+const aiError = ['AI đọc sai', 'AI trả lời sai', 'AI đối chiếu sai'];
+const yellow = ['Lỗi người dùng', 'Lỗi đính kèm file', 'Rules thiếu sót', 'Rules chưa rõ', 'Hồ sơ sai', 'Chứng từ sai', 'Khách đặt sai tên file', 'Không có kết quả AI'];
+for (let i = 0; i < qValues.length; i++) {
+  const row = i + 3;
+  const text = String(qValues[i][0] ?? '');
+  let color = '#77BC65';
+  if (aiError.some((label) => text.includes(label))) color = '#FF972F';
+  else if (yellow.some((label) => text.includes(label))) color = '#FFE994';
+  sheet.getRange(`Q${row}`).format.fill = color;
+}
+
+const result = await SpreadsheetFile.exportXlsx(workbook);
+await result.save(output);
+console.log(JSON.stringify({ output, updatedRows: statusUpdates.map(([row]) => row), recoloredQRows: qValues.length }, null, 2));

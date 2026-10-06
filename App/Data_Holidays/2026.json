@@ -15,19 +15,19 @@
     },
     "PublicHolidays": [
       {
-        "HolidayName": "Nghỉ tết Tây",
-        "FromDate": "01/01/2026",
-        "ToDate": "01/01/2026"
+        "HolidayName": "Nghỉ lễ 0209",
+        "FromDate": "31/08/2026",
+        "ToDate": "02/09/2026"
       },
       {
-        "HolidayName": "Nghỉ lễ",
-        "FromDate": "30/04/2026",
-        "ToDate": "04/05/2026"
+        "HolidayName": "Ngày văn hóa VN",
+        "FromDate": "24/01/2026",
+        "ToDate": "24/11/2026"
       },
       {
-        "HolidayName": "Nghỉ lễ quốc khánh",
-        "FromDate": "02/09/2026",
-        "ToDate": "03/09/2026"
+        "HolidayName": "Ngày nghỉ công ty",
+        "FromDate": "31/12/2026",
+        "ToDate": "31/12/2026"
       }
     ]
   }

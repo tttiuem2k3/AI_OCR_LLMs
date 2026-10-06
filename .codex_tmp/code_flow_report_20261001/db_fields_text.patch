@@ -1,0 +1,71 @@
+*** Begin Patch
+*** Update File: .codex_tmp/code_flow_report_20261001/build_source_code_mechanism_report_v4.py
+@@
+-    card(draw, (190, 220, 2610, 500), "RUN", "BEMT2003  LƯỢT CHẠY AI", "Khóa phiếu: APK_BEMT2000  |  File đầu vào: AttachID, AttachName\nTrạng thái: StatusProcess  |  Kết quả tổng: Status, Percentage\nNội dung tổng: TextContentOCR, TextContentAI  |  Lỗi: TextConditionFail", DB, 24)
+-    card(draw, (60, 650, 710, 1390), "FILE", "BEMT2002  FILE VÀ OCR", "Tên file: FileName\nMã file: APK_File, AttachID\nNguồn: DataSourceType\n\nOCR thô: RawContent\nOCR đã gom/chuẩn hóa: ConsolidatedContent\n\nDùng để biết file nào đã OCR và OCR đọc ra gì.", DB, 20)
+-    card(draw, (750, 650, 1400, 1390), "TYPE", "BEMT2005  LOẠI CHỨNG TỪ", "Loại chứng từ: SectionType\nTên phần/chứng từ: SectionTitle\nThứ tự: SectionOrder\n\nTổng tiền: TotalAmount\nTiền tệ: TotalCurrency\nChữ ký: Signature\nPrompt dùng: PromptSystem", DB, 20)
+-    card(draw, (1440, 650, 2090, 1390), "FIELDS", "BEMT2006  CỘT ĐÃ TRÍCH XUẤT", "Thuộc chứng từ: APK_BEMT2005\nDòng: OrderNo, Description\n\nGiá trị AI đọc: FieldID01 ... FieldID100\nÝ nghĩa từng FieldID do cấu hình ONT1041 map.\n\nTên file không có cột cố định; khi cần lưu sẽ map vào một FieldID theo cấu hình.", DB, 19)
+-    card(draw, (2130, 650, 2780, 1390), "RESULT", "BEMT2004  KẾT QUẢ ĐỐI CHIẾU", "Tiêu chí: CriteriaID, CriteriaName\nKết quả: CriteriaStatus (OK/NG)\nGiải thích: Description\n\nFile dùng đối chiếu: FileName\nHạn AI xác định: DueDateAI\nPrompt dùng: PromptSystem", DB, 20)
++    card(draw, (190, 220, 2610, 500), 1, "BEMT2003  LƯỢT CHẠY AI", "Khóa phiếu: APK_BEMT2000  |  File đầu vào: AttachID, AttachName\nTrạng thái: StatusProcess  |  Kết quả tổng: Status, Percentage\nNội dung tổng: TextContentOCR, TextContentAI  |  Lỗi: TextConditionFail", DB, 24)
++    card(draw, (60, 650, 710, 1390), 2, "BEMT2002  FILE VÀ OCR", "Tên file: FileName\nMã file: APK_File, AttachID\nNguồn: DataSourceType\n\nOCR thô: RawContent\nOCR đã gom/chuẩn hóa: ConsolidatedContent\n\nDùng để biết file nào đã OCR và OCR đọc ra gì.", DB, 20)
++    card(draw, (750, 650, 1400, 1390), 3, "BEMT2005  LOẠI CHỨNG TỪ", "Loại chứng từ: SectionType\nTên phần/chứng từ: SectionTitle\nThứ tự: SectionOrder\n\nTổng tiền: TotalAmount\nTiền tệ: TotalCurrency\nChữ ký: Signature\nPrompt dùng: PromptSystem", DB, 20)
++    card(draw, (1440, 650, 2090, 1390), 4, "BEMT2006  CỘT ĐÃ TRÍCH XUẤT", "Thuộc chứng từ: APK_BEMT2005\nDòng: OrderNo, Description\n\nGiá trị AI đọc: FieldID01 ... FieldID100\nÝ nghĩa từng FieldID do cấu hình ONT1041 map.\n\nTên file không có cột cố định; khi cần lưu sẽ map vào một FieldID theo cấu hình.", DB, 19)
++    card(draw, (2130, 650, 2780, 1390), 5, "BEMT2004  KẾT QUẢ ĐỐI CHIẾU", "Tiêu chí: CriteriaID, CriteriaName\nKết quả: CriteriaStatus (OK/NG)\nGiải thích: Description\n\nFile dùng đối chiếu: FileName\nHạn AI xác định: DueDateAI\nPrompt dùng: PromptSystem", DB, 20)
+@@
+ def database_table(document):
+-    table = document.add_table(rows=1, cols=3)
++    table = document.add_table(rows=1, cols=4)
+     table.alignment = WD_TABLE_ALIGNMENT.CENTER
+     table.style = "Table Grid"
+-    for cell, value in zip(table.rows[0].cells, ["Dữ liệu", "Bảng lưu", "Ý nghĩa"]):
++    for cell, value in zip(table.rows[0].cells, ["Cần tìm", "Bảng", "Trường chính", "Hiểu đơn giản"]):
+         set_cell_shading(cell, "17365D")
+-        write_cell(cell, value, 10.5, True, "FFFFFF")
++        write_cell(cell, value, 9.8, True, "FFFFFF")
+     rows = [
+-        ("Lượt chạy và kết quả tổng", "BEMT2003", "Biết phiếu đang chạy, hoàn tất hay lỗi; lưu OK/NG và % tổng."),
+-        ("Text OCR", "BEMT2002", "Lưu text OCR thô và text đã gom theo file đính kèm."),
+-        ("LLM trích xuất", "BEMT2005 / BEMT2006", "Lưu section và các trường dữ liệu chứng từ sau trích xuất."),
+-        ("LLM / Rules đối chiếu", "BEMT2004", "Lưu OK/NG, lý do và file của từng tiêu chí."),
++        ("Phiếu đang chạy tới đâu", "BEMT2003", "APK_BEMT2000, StatusProcess, Status, Percentage, TextConditionFail", "Một bản ghi = một lượt chạy AI của phiếu."),
++        ("Tên file và OCR", "BEMT2002", "FileName, APK_File, AttachID, RawContent, ConsolidatedContent", "Biết file nào OCR và OCR đọc ra text gì."),
++        ("Loại chứng từ", "BEMT2005", "SectionType, SectionTitle, SectionOrder, TotalAmount, TotalCurrency", "Header của nhóm dữ liệu/chứng từ AI đã trích xuất."),
++        ("Dữ liệu các cột đã trích xuất", "BEMT2006", "OrderNo, Description, FieldID01...FieldID100", "Mỗi FieldID là một cột dữ liệu do ONT1041 mapping."),
++        ("Kết quả đối chiếu", "BEMT2004", "CriteriaName, CriteriaStatus, Description, FileName, DueDateAI", "Kết quả OK/NG và lý do của từng tiêu chí."),
+     ]
+@@
+-            write_cell(cell, value, 9.8)
++            write_cell(cell, value, 8.6)
+@@
+-def markdown_content():
+-    return """# Cơ chế mã nguồn đối chiếu AI BEM
++def markdown_content():
++    return """# Cơ chế mã nguồn đối chiếu AI BEM
+@@
+ ## 2. Luồng một phiếu
+ 
+ 1. ERP9 nhận lệnh thủ công hoặc lịch tự động, lấy phiếu ĐNTT và file đính kèm.
+ 2. API-AI tạo `BEMT2003 = PROCESSING`, đưa job vào `ChannelJobQueue` và xử lý nền.
+ 3. AI Python OCR file, trả text; API-AI lưu text OCR vào `BEMT2002`.
+-4. AI Python dùng LLM trích xuất text thành JSON chứng từ; API-AI lưu section/dòng dữ liệu vào `BEMT2005/BEMT2006`.
++4. AI Python dùng LLM trích xuất text thành JSON chứng từ; API-AI lưu loại chứng từ vào `BEMT2005` và dữ liệu từng cột vào `BEMT2006`.
+ 5. AI Python áp dụng Rules và LLM để đối chiếu; API-AI lưu kết quả từng tiêu chí vào `BEMT2004`, cập nhật kết quả tổng vào `BEMT2003`; ERP9 đọc để hiển thị.
+@@
+-| Dữ liệu | Bảng | Lưu nội dung chính |
+-|---|---|---|
+-| Phiếu và lượt chạy | `BEMT2000` → `BEMT2003` | Phiếu nguồn; trạng thái `PROCESSING/COMPLETED/FAILED`, `OK/NG`, phần trăm và lỗi tổng. |
+-| OCR | `BEMT2002` | Tên file, text OCR thô (`RawContent`) và text đã tổng hợp (`ConsolidatedContent`). |
+-| LLM trích xuất | `BEMT2005` → `BEMT2006` | Section trích xuất và các trường dữ liệu chứng từ (`FieldID...`). |
+-| LLM/Rules đối chiếu | `BEMT2004` | Từng tiêu chí, `OK/NG`, lý do, file liên quan và hạn thanh toán AI. |
++| Cần tìm | Bảng | Trường chính | Hiểu đơn giản |
++|---|---|---|---|
++| Phiếu đang chạy tới đâu | `BEMT2003` | `APK_BEMT2000`, `StatusProcess`, `Status`, `Percentage`, `TextConditionFail` | Một bản ghi = một lượt chạy AI của phiếu. |
++| Tên file và OCR | `BEMT2002` | `FileName`, `APK_File`, `AttachID`, `RawContent`, `ConsolidatedContent` | Biết file nào OCR và OCR đọc ra text gì. |
++| Loại chứng từ | `BEMT2005` | `SectionType`, `SectionTitle`, `SectionOrder`, `TotalAmount`, `TotalCurrency` | Header của nhóm dữ liệu/chứng từ AI đã trích xuất. |
++| Dữ liệu các cột đã trích xuất | `BEMT2006` | `OrderNo`, `Description`, `FieldID01`...`FieldID100` | Mỗi `FieldID` là một cột dữ liệu do `ONT1041` mapping. |
++| Kết quả đối chiếu | `BEMT2004` | `CriteriaName`, `CriteriaStatus`, `Description`, `FileName`, `DueDateAI` | Kết quả OK/NG và lý do của từng tiêu chí. |
+ 
+-**Cách đọc nhanh:** `BEMT2002` trả lời “OCR đọc được gì”; `BEMT2005/2006` trả lời “LLM lấy được dữ liệu gì”; `BEMT2004` trả lời “AI đối chiếu ra sao”; `BEMT2003` cho biết kết quả cuối của lượt chạy.
++**Cách đọc nhanh:** `BEMT2002.FileName` là tên file OCR; `BEMT2005.SectionType/SectionTitle` là loại hoặc nhóm chứng từ; `BEMT2006.FieldID01...FieldID100` là dữ liệu các cột đã trích xuất; `BEMT2004.CriteriaStatus/Description` là kết quả đối chiếu.
+ """
+*** End Patch

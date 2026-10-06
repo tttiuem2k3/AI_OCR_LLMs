@@ -49,7 +49,7 @@ Nếu có nhiều PO:
 3. THU THẬP NGÀY MỐC
 
 - Nếu PaymentTerm thuộc nhóm AMS:
-  Chỉ lấy Ngày hoàn thành kiểm tra từ tất cả CUSTOMSHEET.
+  Chỉ lấy Ngày hàng đến từ tất cả CUSTOMSHEET.
 
 - Nếu PaymentTerm thuộc nhóm AFTER B/L:
   Chỉ lấy Ngày hóa đơn từ tất cả INVOICE và COMMERCIALINVOICE.
@@ -183,7 +183,7 @@ Dữ liệu đầu vào:
 { Loại chứng từ: PO | PaymentTerm: {{this.PaymentTerm}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{#if (eq this.SectionType "CUSTOMSHEET")}}
-{ Loại chứng từ: CUSTOMSHEET | Ngày hoàn thành kiểm tra: {{this.ClearanceDate}} | Tên file: {{this.FileName}} }
+{ Loại chứng từ: CUSTOMSHEET | Ngày hàng đến: {{this.ArrivalDate}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{#if (eq this.SectionType "INVOICE")}}
 { Loại chứng từ: INVOICE | Ngày hóa đơn: {{this.VoucherDate}} | Tên file: {{this.FileName}} }

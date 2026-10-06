@@ -103,6 +103,9 @@ def _norm_key(name: str) -> str:
 	raw = str(name or "").strip()
 	if not raw:
 		return ""
+
+	# NFKD không tự chuyển Đ/đ thành D/d, nên chuẩn hóa riêng trước khi bỏ dấu.
+	raw = raw.replace("Đ", "D").replace("đ", "d")
 	no_accent = "".join(
 		ch for ch in unicodedata.normalize("NFKD", raw)
 		if not unicodedata.combining(ch)
@@ -789,27 +792,41 @@ NGUYENVATLIEU_COMPARE_RULES: dict = {
 
 # -----------------------------
 # Bộ rule: DnttType = KHAC
-# - DATCOC_TRATRUOC và KETHUA_CONGNO dùng cùng 1 rule
-# - Không phân biệt kỳ thanh toán
+# - Rule được tách theo nguồn hình thành và kỳ thanh toán.
+# - Chỉ khai báo chứng từ cần chọn để đối chiếu; điều kiện chi tiết do prompt/logic xử lý.
 # -----------------------------
-KHAC_COMPARE_RULES_DEFAULT: dict = {
-	"TENNHACUNGCAP": _rule(required_all=["INVOICE", "CONTRACT"]),
-	"SOHOADON": _rule(required_all=["INVOICE"]),
-	"NGAYHOADON": _rule(required_all=["INVOICE"]),
-	"SOTIEN": _rule(required_all=["INVOICE", "CONTRACT", "RINGI"]),
-	"LOAITIEN": _rule(required_all=["INVOICE", "CONTRACT", "RINGI"]),
-	"CHUKICONDAU": _rule(required_all=["INVOICE", "CONTRACT", "PO"]),
-}
-
 KHAC_COMPARE_RULES: dict = {
 	"DATCOC_TRATRUOC": {
-		"DEFAULT": KHAC_COMPARE_RULES_DEFAULT,
+		"DEFAULT": {
+			"TENNHACUNGCAP": _rule(required_all=["CONTRACT", "RINGI"]),
+			"SOHOADON": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu số hóa đơn."),
+			"NGAYHOADON": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu ngày hóa đơn."),
+			"SOTIEN": _rule(required_all=["CONTRACT"]),
+			"LOAITIEN": _rule(required_all=["CONTRACT", "RINGI"]),
+			"CHUKICONDAU": _rule(required_all=["PO"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"SORINGI": _rule(required_all=["RINGI", "CONTRACT"]),
+			"SOHOPDONG": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu số hợp đồng."),
+		},
 	},
 	"KETHUA_CONGNO": {
-		"DEFAULT": KHAC_COMPARE_RULES_DEFAULT,
+		"DEFAULT": {
+			"TENNHACUNGCAP": _rule(required_all=["RINGI", "INSPECTION"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"SOHOADON": _rule(required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"NGAYHOADON": _rule(required_any_groups=[["INVOICE", "COMMERCIALINVOICE"], ["INVOICE", "COMMERCIALINVOICE", "INSPECTION"]]),
+			"SOTIEN": _rule(required_all=["CONTRACT", "RINGI"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"LOAITIEN": _rule(required_all=["CONTRACT", "RINGI"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"CHUKICONDAU": _rule(required_all=["PO"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"SORINGI": _rule(required_all=["RINGI", "CONTRACT"]),
+			"SOHOPDONG": _rule(required_all=["CONTRACT", "INSPECTION"]),
+		},
+		"LAN_1": {
+			"TENNHACUNGCAP": _rule(required_all=["CONTRACT", "RINGI", "INSPECTION"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+		},
+		"LAN_CUOI": {
+			"TENNHACUNGCAP": _rule(required_all=["CONTRACT", "RINGI"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+		},
 	},
 }
-	
 
 # CẤU HÌNH CHÍNH
 # - Có thể thêm DNTT mới bằng cách gán 1 dict rule vào key tương ứng.
@@ -1763,7 +1780,7 @@ def _delivery_term_countries_in_location(value: object) -> set[str]:
 	return found_countries
 
 def _delivery_term_location_similarity(left: object, right: object) -> float:
-	"""Tính tỷ lệ giống nhau của hai địa danh bằng khoảng cách chỉnh sửa ký tự."""
+	"""T?nh t? l? gi?ng nhau c?a hai ??a danh b?ng kho?ng c?ch ch?nh s?a k? t?."""
 	left_key = _delivery_term_location_key(left)
 	right_key = _delivery_term_location_key(right)
 	if left_key == right_key:
@@ -1784,6 +1801,50 @@ def _delivery_term_location_similarity(left: object, right: object) -> float:
 
 	distance = previous_row[-1]
 	return 1.0 - (distance / max(len(left_key), len(right_key)))
+
+
+def _delivery_term_ocr_aware_similarity(left: object, right: object) -> float:
+	"""So s?nh OCR m? kh?ng thay ??i d? li?u ngu?n; ch? gi?m chi ph? nh?m k? t? ph? bi?n."""
+	left_key = _delivery_term_location_key(left)
+	right_key = _delivery_term_location_key(right)
+	if left_key == right_key:
+		return 1.0
+	if not left_key or not right_key:
+		return 0.0
+
+	confusable_pairs = {frozenset(pair) for pair in (("O", "0"), ("I", "1"), ("I", "L"), ("B", "8"), ("S", "5"))}
+	previous_row = list(range(len(right_key) + 1))
+	for left_index, left_character in enumerate(left_key, start=1):
+		current_row = [left_index]
+		for right_index, right_character in enumerate(right_key, start=1):
+			if left_character == right_character:
+				substitution_cost = 0.0
+			elif frozenset((left_character, right_character)) in confusable_pairs:
+				substitution_cost = 0.25
+			else:
+				substitution_cost = 1.0
+			current_row.append(min(
+				current_row[-1] + 1,
+				previous_row[right_index] + 1,
+				previous_row[right_index - 1] + substitution_cost,
+			))
+		previous_row = current_row
+
+	distance = previous_row[-1]
+	return 1.0 - (distance / max(len(left_key), len(right_key)))
+
+
+def _delivery_term_location_matches(left: object, right: object) -> bool:
+	"""??i chi?u ??a danh m? kh?ng s?a gi? tr? OCR ngu?n."""
+	left_key = _delivery_term_unknown_location_key(left)
+	right_key = _delivery_term_unknown_location_key(right)
+	if left_key == right_key:
+		return True
+	if _delivery_term_location_is_expanded_form(left, right):
+		return True
+	if _delivery_term_location_similarity(left, right) >= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD:
+		return True
+	return _delivery_term_ocr_aware_similarity(left, right) >= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
 
 def _delivery_term_location_is_expanded_form(left: object, right: object) -> bool:
 	"""Nhận diện một tên điểm giao hàng là dạng đầy đủ mở rộng của tên còn lại."""
@@ -1838,8 +1899,12 @@ def _delivery_term_known_location_keys(value: object) -> set[str]:
 def _delivery_term_known_location_matches_ocr(value: object, ocr_location: object) -> bool:
 	"""Kiểm tra chuỗi OCR có giống ít nhất 80% một alias của địa danh đã nhận diện hay không."""
 	return any(
-		_delivery_term_location_similarity(location_key, ocr_location)
-		>= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+		(
+			_delivery_term_location_similarity(location_key, ocr_location)
+			>= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+			or _delivery_term_ocr_aware_similarity(location_key, ocr_location)
+			>= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+		)
 		for location_key in _delivery_term_known_location_keys(value)
 	)
 
@@ -1995,12 +2060,8 @@ def _delivery_term_mismatch(left: object, right: object) -> str:
 		ocr_location = right_location if left_is_known else left_location
 		return "" if _delivery_term_known_location_matches_ocr(known_value, ocr_location) else "location"
 	if not left_is_known:
-		similarity = _delivery_term_location_similarity(left_location, right_location)
-		is_expanded_form = _delivery_term_location_is_expanded_form(
-			left_term.get("location"),
-			right_term.get("location"),
-		)
-		return "" if is_expanded_form or similarity >= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD else "location"
+		return "" if _delivery_term_location_matches(left_term.get("location"), right_term.get("location")) else "location"
+
 	if left_country != right_country:
 		return "country"
 	if (
@@ -2015,7 +2076,7 @@ def _delivery_term_mismatch(left: object, right: object) -> str:
 			left_term.get("location"),
 			right_term.get("location"),
 		)
-		if not is_expanded_form and similarity < DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD:
+		if not _delivery_term_location_matches(left_term.get("location"), right_term.get("location")):
 			return "location"
 	return ""
 
@@ -2574,6 +2635,29 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 	}
 
 
+def _add_payment_term_to_month_end(anchor_date: datetime, day_count: int) -> datetime:
+	"""Cộng kỳ hạn và đưa kết quả về ngày cuối tháng theo quy ước nghiệp vụ NVL.
+
+	Với kỳ hạn là bội số 30 ngày, coi mỗi 30 ngày là 1 tháng lịch.
+	Ví dụ 01/08/2026 + AMS30 => tháng 09/2026 => 30/09/2026.
+	Với số ngày không chia hết cho 30, cộng số ngày thực tế rồi lấy cuối tháng chứa kết quả.
+	"""
+	if day_count > 0 and day_count % 30 == 0:
+		month_offset = day_count // 30
+		total_month = (anchor_date.year * 12 + (anchor_date.month - 1)) + month_offset
+		target_year, target_month_zero = divmod(total_month, 12)
+		target_month = target_month_zero + 1
+	else:
+		shifted = anchor_date + timedelta(days=day_count)
+		target_year, target_month = shifted.year, shifted.month
+
+	if target_month == 12:
+		next_month = datetime(target_year + 1, 1, 1)
+	else:
+		next_month = datetime(target_year, target_month + 1, 1)
+	return next_month - timedelta(days=1)
+
+
 def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 	"""Tính DueDate cho Nguyên vật liệu từ PO và ngày mốc, không gọi LLM."""
 	documents = _parse_fixed_compare_document_blocks(content_text)
@@ -2614,33 +2698,46 @@ def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 		}
 
 	term_type, day_count = next(iter(majority_terms))
+	payment_term_text = f"AMS{day_count}" if term_type == "AMS" else f"{day_count} AFTER B/L"
 	if term_type == "AMS":
 		anchor_doc_types = {"CUSTOMSHEET"}
-		anchor_field = "NGAYHOANTHANHKIEMTRA"
-		missing_description = "Không tìm thấy Ngày hoàn thành kiểm tra hợp lệ của chứng từ CUSTOMSHEET"
+		anchor_field = "NGAYHANGDEN"
+		missing_description = "Không tìm thấy Ngày hàng đến hợp lệ của chứng từ CUSTOMSHEET"
 	else:
 		anchor_doc_types = {"INVOICE", "COMMERCIALINVOICE"}
 		anchor_field = "NGAYHOADON"
 		missing_description = "Không tìm thấy Ngày hóa đơn hợp lệ của chứng từ INVOICE hoặc COMMERCIALINVOICE"
 
-	anchor_dates: list[datetime] = []
-	seen_anchor_dates: set[datetime] = set()
+	anchor_records: list[tuple[datetime, str]] = []
 	for document in documents:
 		if document.get("LOAICHUNGTU") not in anchor_doc_types:
 			continue
 		anchor_date = _parse_payment_anchor_date(document.get(anchor_field))
-		if anchor_date is None or anchor_date in seen_anchor_dates:
+		if anchor_date is None:
 			continue
-		seen_anchor_dates.add(anchor_date)
-		anchor_dates.append(anchor_date)
+		anchor_records.append((anchor_date, str(document.get("TENFILE") or "").strip()))
 
-	if not anchor_dates:
+	if not anchor_records:
 		return {"DueDate": None, "FileName": "", "Description": missing_description}
 
 	due_dates: list[datetime] = []
+	due_date_files: dict[str, list[str]] = {}
+	due_date_anchors: dict[str, list[dict[str, str]]] = {}
 	seen_due_dates: set[datetime] = set()
-	for anchor_date in anchor_dates:
-		due_date = anchor_date + timedelta(days=day_count)
+	for anchor_date, file_name in anchor_records:
+		due_date = _add_payment_term_to_month_end(anchor_date, day_count)
+		due_date_key = due_date.strftime("%d/%m/%Y")
+		anchor_record = {
+			"FileName": file_name,
+			"AnchorDate": anchor_date.strftime("%d/%m/%Y"),
+		}
+		anchor_list = due_date_anchors.setdefault(due_date_key, [])
+		if anchor_record not in anchor_list:
+			anchor_list.append(anchor_record)
+		if file_name:
+			file_list = due_date_files.setdefault(due_date_key, [])
+			if file_name not in file_list:
+				file_list.append(file_name)
 		if due_date in seen_due_dates:
 			continue
 		seen_due_dates.add(due_date)
@@ -2649,6 +2746,9 @@ def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 	return {
 		"DueDate": ", ".join(due_date.strftime("%d/%m/%Y") for due_date in due_dates),
 		"FileName": "",
+		"PaymentTermText": payment_term_text,
+		"DueDateFiles": due_date_files,
+		"DueDateAnchors": due_date_anchors,
 		"Description": "",
 	}
 
@@ -2729,16 +2829,35 @@ def _build_payment_deadline_result(
 	)
 
 	deadline = _parse_compare_date(prompt_info.get("Deadline"))
-	failed_due_dates = [
-		due_date
-		for due_date in normalized_due_dates
+	failed_indexes = [
+		idx
+		for idx, due_date in enumerate(normalized_due_dates)
 		if deadline is None or deadline < due_date
 	]
-	passed_due_dates = [
-		due_date
-		for due_date in normalized_due_dates
+	passed_indexes = [
+		idx
+		for idx, due_date in enumerate(normalized_due_dates)
 		if deadline is not None and deadline >= due_date
 	]
+	failed_due_dates = [normalized_due_dates[idx] for idx in failed_indexes]
+	passed_due_dates = [normalized_due_dates[idx] for idx in passed_indexes]
+
+	# Riêng nguồn Python có thể gửi mapping DueDate gốc -> tên file chứa ngày mốc.
+	# Chỉ trả các file ứng với DueDate bị fail; giữ nguyên hành vi cũ cho nguồn LLM khác.
+	due_date_files = source_obj.get("DueDateFiles") if isinstance(source_obj.get("DueDateFiles"), dict) else {}
+	failed_file_names: list[str] = []
+	seen_failed_file_names: set[str] = set()
+	for idx in failed_indexes:
+		if idx >= len(due_dates):
+			continue
+		raw_due_date_key = due_dates[idx].strftime("%d/%m/%Y")
+		for mapped_file_name in (due_date_files.get(raw_due_date_key) or []):
+			mapped_file_name = str(mapped_file_name or "").strip()
+			if not mapped_file_name or mapped_file_name in seen_failed_file_names:
+				continue
+			seen_failed_file_names.add(mapped_file_name)
+			failed_file_names.append(mapped_file_name)
+	failed_file_name = ", ".join(failed_file_names) if due_date_files else file_name
 	if not failed_due_dates:
 		return {
 			"criteria": {
@@ -2751,29 +2870,70 @@ def _build_payment_deadline_result(
 		}
 
 	deadline_text = deadline.strftime("%d/%m/%Y") if deadline is not None else str(prompt_info.get("Deadline") or "").strip()
-	failed_description = f"Ngày hạn thanh toán trên ĐNTT là {deadline_text} sớm hơn ngày hạn thanh toán chuẩn được tính: "
 	failed_due_date_text = ", ".join(
 		due_date.strftime("%d/%m/%Y")
 		for due_date in failed_due_dates
 	)
-	failed_date_label = (
-		"ngày không thỏa điều kiện"
-		if len(normalized_due_dates) == 1
-		else "các ngày không thỏa điều kiện"
-	)
-	failed_description += f"{failed_due_date_text} ({failed_date_label})."
-	if passed_due_dates:
-		passed_due_date_text = ", ".join(
-			due_date.strftime("%d/%m/%Y")
-			for due_date in passed_due_dates
+	if due_date_files:
+		payment_term_text = str(source_obj.get("PaymentTermText") or "").strip()
+		due_date_anchors = source_obj.get("DueDateAnchors") if isinstance(source_obj.get("DueDateAnchors"), dict) else {}
+		failed_anchor_texts: list[str] = []
+		seen_failed_anchor_texts: set[str] = set()
+		for idx in failed_indexes:
+			if idx >= len(due_dates):
+				continue
+			raw_due_date_key = due_dates[idx].strftime("%d/%m/%Y")
+			for anchor_record in (due_date_anchors.get(raw_due_date_key) or []):
+				if not isinstance(anchor_record, dict):
+					continue
+				anchor_file_name = str(anchor_record.get("FileName") or "").strip()
+				anchor_date_text = str(anchor_record.get("AnchorDate") or "").strip()
+				if anchor_file_name and anchor_date_text:
+					anchor_text = f"{anchor_file_name} - {anchor_date_text}"
+				else:
+					anchor_text = anchor_file_name or anchor_date_text
+				if not anchor_text or anchor_text in seen_failed_anchor_texts:
+					continue
+				seen_failed_anchor_texts.add(anchor_text)
+				failed_anchor_texts.append(anchor_text)
+
+		failed_description = (
+			f"Ngày hạn thanh toán trên ĐNTT là {deadline_text}. "
+			f"Ngày hạn thanh toán chuẩn được tính không hợp lệ: {failed_due_date_text or 'Không có'}."
 		)
-		failed_description += f" => Ngày hợp lệ là: {passed_due_date_text}."
+		if payment_term_text and failed_anchor_texts:
+			failed_description += (
+				f" ( Điều kiện thanh toán {payment_term_text}: "
+				f"{', '.join(failed_anchor_texts)})"
+			)
+		if passed_due_dates:
+			passed_due_date_text = ", ".join(
+				due_date.strftime("%d/%m/%Y")
+				for due_date in passed_due_dates
+			)
+			failed_description += (
+				f" Ngày hạn thanh toán chuẩn được tính hợp lệ: {passed_due_date_text}."
+			)
+	else:
+		failed_description = f"Ngày hạn thanh toán trên ĐNTT là {deadline_text} sớm hơn ngày hạn thanh toán chuẩn được tính: "
+		failed_date_label = (
+			"ngày không thỏa điều kiện"
+			if len(normalized_due_dates) == 1
+			else "các ngày không thỏa điều kiện"
+		)
+		failed_description += f"{failed_due_date_text} ({failed_date_label})."
+		if passed_due_dates:
+			passed_due_date_text = ", ".join(
+				due_date.strftime("%d/%m/%Y")
+				for due_date in passed_due_dates
+			)
+			failed_description += f" => Ngày hợp lệ là: {passed_due_date_text}."
 
 	return {
 		"criteria": {
 			"CriteriaName": (criterion_name or "Hạn thanh toán").strip(),
 			"CriteriaStatus": "NG",
-			"FileName": file_name,
+			"FileName": failed_file_name,
 			"Description": failed_description,
 			"DueDateAI": normalized_due_date,
 		}
@@ -2992,6 +3152,7 @@ def _merge_sections_by_rules(sections: list) -> list:
 				"ClearanceStatus",
 				"SupplierName",
 				"StagingArea",
+				"ArrivalDate",
 				"VoucherNo",
 				"VoucherDate",
 				"DeliveryTerm",

@@ -64,5 +64,15 @@ class RunTestFilenameSectionTypeTests(unittest.TestCase):
         )
 
 
+    def test_llm_auth_empty_config_reports_server_not_configured(self):
+        with patch.object(run_test.settings_all, "LLM_API_TOKEN", ""):
+            response = run_test.app.test_client().post(
+                "/api/ai_llms_models",
+                json={"messages": [{"role": "user", "content": "test"}]},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("Server has not configured LLM_API_TOKEN", response.get_data(as_text=True))
+
 if __name__ == "__main__":
     unittest.main()

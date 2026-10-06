@@ -1,0 +1,42 @@
+*** Begin Patch
+*** Update File: .codex_tmp/code_flow_report_20261001/build_source_code_mechanism_report_v4.py
+@@
+ def centered(draw, rect, value, font_value, fill=DARK, gap=6):
+@@
+         draw.text((x1 + ((x2 - x1 - width) / 2), y), line, font=font_value, fill=fill)
+         y += height + gap
++
++
++def left_wrapped(draw, rect, value, font_value, fill=DARK, gap=7):
++    x1, y1, x2, y2 = rect
++    y = y1
++    for raw_line in str(value).split("\n"):
++        if raw_line == "":
++            y += text_size(draw, "A", font_value)[1] + gap
++            continue
++        for line in wrap(draw, raw_line, font_value, max(20, x2 - x1)):
++            if y > y2:
++                return
++            draw.text((x1, y), line, font=font_value, fill=fill)
++            y += max(1, text_size(draw, line, font_value)[1]) + gap
+@@
+ def card(draw, rect, number, title, body, color, body_size=21):
+@@
+     draw.ellipse((x1 + 20, y1 + 13, x1 + 66, y1 + 59), fill="white")
+     centered(draw, (x1 + 22, y1 + 15, x1 + 64, y1 + 57), str(number), f(21, True), color, 0)
+     centered(draw, (x1 + 84, y1 + 8, x2 - 16, y1 + 66), title, f(23, True), "white")
+-    centered(draw, (x1 + 22, y1 + 92, x2 - 22, y2 - 18), body, f(body_size), DARK, 7)
++    left_wrapped(draw, (x1 + 34, y1 + 112, x2 - 30, y2 - 24), body, f(body_size), DARK, 8)
+@@
+-    card(draw, (100, 270, 730, 1260), 1, "ERP9  WEB VÀ API", "Vị trí: 01.ERP9\nCode: BEMF2000Controller.cs\n\n- Nhận thao tác thủ công hoặc lịch tự động.\n- Lấy phiếu ĐNTT và file đính kèm.\n- Gọi API-AI qua HandlerFile.\n- Đọc kết quả để hiển thị UI.\n\n03.SERVICES: chưa thấy trực tiếp trong flow BEM-AI đã rà.", ERP, 22)
+-    card(draw, (780, 270, 1410, 1260), 2, "API-AI  .NET", "Vị trí: 06.API_AI\n\nCode chính:\n- FileDataHandlerController\n- ReadFileOrchestratorService\n- ChannelJobQueue / ReadFileWorker\n\nTạo lượt chạy, đưa job vào Queue, gọi AI Python, lưu và đọc Database.", API_AI, 22)
+-    card(draw, (1460, 270, 2090, 1260), 3, "AI BEM  PYTHON", "Vị trí: BEM_AI_PROJECT/App\n\nCode chính:\n- main_iis.py: /ocr, /api/ai_llms_models\n- Rules_AI_BEM_MEIKO.py\n- LLMs_BE/engine.py\n\nNhận file/text, OCR, trích xuất dữ liệu, áp dụng Rules và LLM đối chiếu.", AI, 22)
+-    card(draw, (2140, 270, 2770, 1260), 4, "DATABASE", "BEMT2003: một lượt chạy AI\nBEMT2002: tên file và text OCR\nBEMT2005: loại chứng từ\nBEMT2006: dữ liệu cột đã trích xuất\nBEMT2004: kết quả từng tiêu chí\n\nAPI-AI là nơi ghi/đọc dữ liệu vận hành.", DB, 22)
++    card(draw, (100, 270, 730, 1260), 1, "ERP9  WEB VÀ API", "Vị trí: 01.ERP9\nCode: BEMF2000Controller.cs\n\n- Nhận thao tác thủ công hoặc lịch tự động.\n- Lấy phiếu ĐNTT và file đính kèm.\n- Gọi API-AI qua HandlerFile.\n- Đọc kết quả để hiển thị UI.\n\n03.SERVICES: chưa thấy trực tiếp trong flow BEM-AI đã rà.", ERP, 24)
++    card(draw, (780, 270, 1410, 1260), 2, "API-AI  .NET", "Vị trí: 06.API_AI\n\nCode chính:\n- FileDataHandlerController\n- ReadFileOrchestratorService\n- ChannelJobQueue / ReadFileWorker\n\nTạo lượt chạy, đưa job vào Queue, gọi AI Python, lưu và đọc Database.", API_AI, 24)
++    card(draw, (1460, 270, 2090, 1260), 3, "AI BEM  PYTHON", "Vị trí: BEM_AI_PROJECT/App\n\nCode chính:\n- main_iis.py: /ocr, /api/ai_llms_models\n- Rules_AI_BEM_MEIKO.py\n- LLMs_BE/engine.py\n\nNhận file/text, OCR, trích xuất dữ liệu, áp dụng Rules và LLM đối chiếu.", AI, 24)
++    card(draw, (2140, 270, 2770, 1260), 4, "DATABASE", "BEMT2003: một lượt chạy AI\nBEMT2002: tên file và text OCR\nBEMT2005: loại chứng từ\nBEMT2006: dữ liệu cột đã trích xuất\nBEMT2004: kết quả từng tiêu chí\n\nAPI-AI là nơi ghi/đọc dữ liệu vận hành.", DB, 24)
+@@
+-        card(draw, rect, number, title, body, color, 22)
++        card(draw, rect, number, title, body, color, 24)
+*** End Patch

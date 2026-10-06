@@ -1,0 +1,17 @@
+*** Begin Patch
+*** Update File: .codex_tmp/code_flow_report_20261001/build_acceptance_report_v3.py
+@@
+ - API-AI chạy từng prompt qua `CompareAsync`; Rules/LLM trả OK/NG và giải thích từng tiêu chí để lưu `BEMT2004`.
+ - Cuối luồng, API-AI tính kết quả tổng, %, điều kiện fail và cập nhật `BEMT2003=COMPLETED`; nếu bắt được lỗi thì cập nhật `FAILED`.
+ - `BEMT2005/2006` có cấu trúc master/detail, nhưng workflow đang rà chưa thấy gọi lưu trực tiếp; cần xác nhận luồng nào đang ghi hai bảng này.
++- Trạng thái baseline cần theo dõi: `QUEUED → OCR_RUNNING → LLM_EXTRACTING → RULE_CHECKING → COMPLETED`; lỗi tạm thời vào `RETRY_WAIT`, lỗi cuối vào `FAILED`.
++- OCR/LLM engine được tái sử dụng trong process Python; LLM dùng `_gen_lock` để tuần tự hóa generate trên cùng GPU. API-AI cần lưu timeout/error theo từng bước.
+@@
+-    add_heading(doc, "3. Trách nhiệm kỹ thuật và trạng thái")
++    add_heading(doc, "3. Chuỗi xử lý API-AI và dữ liệu lưu DB")
+@@
+         "Từng prompt gọi CompareAsync; Rules/LLM trả OK/NG + giải thích để lưu BEMT2004. Sau đó BEMT2003 lưu kết quả tổng, % và trạng thái COMPLETED/FAILED.",
+         "BEMT2005/2006 có cấu trúc master/detail, nhưng workflow đang rà chưa thấy gọi lưu trực tiếp; cần xác nhận luồng thực tế.",
++        "Trạng thái baseline: QUEUED → OCR_RUNNING → LLM_EXTRACTING → RULE_CHECKING → COMPLETED; lỗi tạm thời vào RETRY_WAIT, lỗi cuối vào FAILED.",
++        "OCR/LLM engine tái sử dụng trong Python; LLM giữ gen_lock trên GPU. API-AI cần ghi timeout/error theo từng bước vào DB.",
+*** End Patch

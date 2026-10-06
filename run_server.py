@@ -1,29 +1,25 @@
 import os
 
-
-def _load_dotenv(path: str = ".env") -> None:
-    """Minimal .env loader (no external dependency)."""
-    if not os.path.exists(path):
-        return
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            key, _, val = line.partition("=")
-            if not key:
-                continue
-            os.environ[key.strip()] = val.strip()
-
-
-def _get_host_port() -> tuple[str, int]:
-    host = os.getenv("HOST", "192.168.0.157")
-    port = int(os.getenv("PORT", "4444"))
-    return host, port
+from App.settings_all import get_settings_all
 
 
 def main() -> None:
-    _load_dotenv(".env")
+    settings = get_settings_all()
+
+    # Cấu hình CPU OCR càng sớm càng tốt, trước khi import App.main_iis
+    # và trước khi Paddle/PaddleX/PaddleOCR có cơ hội được import.
+    if settings.ocr_device == "cpu":
+        cpu_threads = max(1, int(getattr(settings, "OCR_CPU_THREADS", 32)))
+        os.environ["OMP_NUM_THREADS"] = str(cpu_threads)
+        os.environ["MKL_NUM_THREADS"] = str(cpu_threads)
+        if bool(getattr(settings, "OCR_CPU_DISABLE_MKLDNN", True)):
+            os.environ["FLAGS_use_mkldnn"] = "0"
+        print(
+            "OCR CPU env prepared before Paddle import: "
+            f"OMP_NUM_THREADS={os.environ['OMP_NUM_THREADS']} "
+            f"MKL_NUM_THREADS={os.environ['MKL_NUM_THREADS']} "
+            f"FLAGS_use_mkldnn={os.environ.get('FLAGS_use_mkldnn', '<unset>')}"
+        )
 
     # Ensure uvicorn is available (fail early with a clear message)
     try:
@@ -41,7 +37,8 @@ def main() -> None:
             "Thiếu 'asgiref' để chạy Flask (WSGI) trên uvicorn (ASGI). Hãy cài: pip install asgiref"
         ) from e
 
-    host, port = _get_host_port()
+    host = settings.HOST
+    port = int(settings.PORT)
 
     print(f"Khởi động AI Server (uvicorn) tại: http://{host}:{port}/")
 
@@ -57,7 +54,7 @@ def main() -> None:
         asgi_app,
         host=host,
         port=port,
-        log_level=os.getenv("LOG_LEVEL", "info").lower(),
+        log_level=str(settings.LOG_LEVEL or "info").lower(),
         access_log=True,
         lifespan="off",
     )

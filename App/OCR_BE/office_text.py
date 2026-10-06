@@ -1,10 +1,12 @@
 # App/office_text.py
 from __future__ import annotations
+import csv
 from pathlib import Path
 import re
 from typing import List
 from io import BytesIO
 
+OFFICE_TEXT_EXTENSIONS = frozenset({".csv", ".docx", ".xlsx", ".xls", ".pptx"})
 _EXCEL_FALLBACK_PAGE_ROWS = 75
 _EXCEL_FALLBACK_MAX_COLS = 64
 _CUSTOMS_PAGE_MARKER_RE = re.compile(r"^\s*(\d{1,3})\s*/\s*(\d{1,3})\s*$")
@@ -167,6 +169,40 @@ def extract_docx_text(src: str | Path) -> List[str]:
     lines = [b for b in blocks if b is not None]
     pages = _paginate_lines(lines, max_lines=40, max_chars=88)
     return pages
+
+
+def _decode_csv_bytes(data: bytes) -> str:
+    for encoding in ("utf-8-sig", "utf-8", "cp1258", "cp1252"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("latin-1")
+
+
+def extract_csv_text(src: str | Path) -> List[str]:
+    data = Path(src).read_bytes() if isinstance(src, (str, Path)) else src
+    text = _decode_csv_bytes(data)
+    sample = text[:8192]
+
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+    except csv.Error:
+        dialect = csv.excel
+
+    rows_txt: List[str] = []
+    for row in csv.reader(text.splitlines(), dialect):
+        line = _excel_row_to_text(row)
+        if line.strip():
+            rows_txt.append(line)
+
+    if not rows_txt:
+        return [""]
+
+    return [
+        _excel_page_text("CSV", rows_txt[i : i + _EXCEL_FALLBACK_PAGE_ROWS])
+        for i in range(0, len(rows_txt), _EXCEL_FALLBACK_PAGE_ROWS)
+    ]
 
 def _xlsx_print_bounds(ws) -> tuple[int, int, int, int]:
     from openpyxl.utils.cell import range_boundaries
@@ -601,6 +637,8 @@ def extract_pptx_text(src: str | Path) -> List[str]:
 
 def extract_office_text(path: str | Path) -> List[str]:
     ext = Path(path).suffix.lower()
+    if ext == ".csv":
+        return extract_csv_text(path)
     if ext == ".docx":
         return extract_docx_text(path)
     if ext == ".xlsx":

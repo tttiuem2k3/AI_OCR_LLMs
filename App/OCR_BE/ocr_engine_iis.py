@@ -68,19 +68,25 @@ def _with_page_end_markers(pages_text: List[str]) -> str:
 
 class OCREngine:
     def __init__(self):
-        # Import lazily to prevent app import from crashing if optional deps are missing.
-        from paddleocr import PPStructureV3
-
         t_all = time.time()
         s = get_settings_all()
+        device = s.ocr_device
+
+        # CPU flags phải được set trước khi import PaddleOCR/PaddleX.
+        # Điều này giúp tránh việc oneDNN được khởi tạo trước khi cấu hình CPU có hiệu lực.
+        if device == "cpu":
+            cpu_threads = max(1, int(getattr(s, "OCR_CPU_THREADS", 32)))
+            os.environ["OMP_NUM_THREADS"] = str(cpu_threads)
+            os.environ["MKL_NUM_THREADS"] = str(cpu_threads)
+            if bool(getattr(s, "OCR_CPU_DISABLE_MKLDNN", True)):
+                os.environ["FLAGS_use_mkldnn"] = "0"
+
+        # Import lazily to prevent app import from crashing if optional deps are missing.
+        from paddleocr import PPStructureV3
 
         # Persist settings for later use
         self._s = s
         self.settings = s
-
-        # Strictly forbid CPU
-        if str(getattr(s, "DEVICE", "gpu")).lower() != "gpu":
-            raise RuntimeError("CPU is forbidden. Please set DEVICE=gpu.")
 
         # Prefer local-only model resolution to avoid downloads at startup
         os.environ.setdefault("PADDLE_PDX_MODEL_SOURCE", "LOCAL")
@@ -183,7 +189,7 @@ class OCREngine:
             self.orientation_model = create_model(
                 orientation_model_name,
                 model_dir=str(orientation_model_dir),
-                device="gpu",
+                device=device,
             )
             logger.info(
                 "[Engine] fast orientation model=%s four_way=%s score>=%.3f "
@@ -214,17 +220,59 @@ class OCREngine:
             os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
 
         # Init pipeline
+        # CPU dùng cùng package/runtime với GPU nhưng tắt oneDNN/MKLDNN nếu được cấu hình,
+        # tránh nhánh oneDNN/PIR đã gây lỗi ConvertPirAttribute2RuntimeAttribute.
+        pipeline_runtime_kwargs = {}
+        if device == "cpu":
+            # PaddleOCR/PaddleX có khác biệt nhỏ giữa các version, nên chỉ truyền
+            # tham số CPU nếu constructor hiện tại hỗ trợ (hoặc nhận **kwargs).
+            import inspect
+
+            pp_signature = inspect.signature(PPStructureV3)
+            pp_parameters = pp_signature.parameters
+            accepts_kwargs = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD
+                for p in pp_parameters.values()
+            )
+            enable_mkldnn = not bool(getattr(s, "OCR_CPU_DISABLE_MKLDNN", True))
+            cpu_threads = max(1, int(getattr(s, "OCR_CPU_THREADS", 32)))
+
+            if accepts_kwargs or "enable_mkldnn" in pp_parameters:
+                pipeline_runtime_kwargs["enable_mkldnn"] = enable_mkldnn
+            else:
+                logger.warning(
+                    "[Engine] PPStructureV3 version hiện tại không expose enable_mkldnn; "
+                    "sẽ dùng FLAGS_use_mkldnn=%s làm fallback.",
+                    os.environ.get("FLAGS_use_mkldnn", "<unset>"),
+                )
+
+            if accepts_kwargs or "cpu_threads" in pp_parameters:
+                pipeline_runtime_kwargs["cpu_threads"] = cpu_threads
+            else:
+                logger.warning(
+                    "[Engine] PPStructureV3 version hiện tại không expose cpu_threads; "
+                    "sẽ dùng OMP_NUM_THREADS/MKL_NUM_THREADS=%d.",
+                    cpu_threads,
+                )
+
+            logger.info(
+                "[Engine] CPU runtime: enable_mkldnn=%s cpu_threads=%d runtime_kwargs=%s",
+                enable_mkldnn,
+                cpu_threads,
+                sorted(pipeline_runtime_kwargs.keys()),
+            )
+
         t0 = time.time()
         try:
             self.pipeline = PPStructureV3(
-                device="gpu",
+                device=device,
                 text_detection_model_dir=str(det_dir),
                 text_detection_model_name=s.DET_MODEL_NAME,
                 text_recognition_model_dir=str(rec_dir),
                 text_recognition_model_name=s.REC_MODEL_NAME,
                 layout_detection_model_dir=str(layout_dir),
                 layout_detection_model_name=s.LAYOUT_MODEL_NAME,
-                # text_recognition_batch_size=int(getattr(s, "TEXT_REC_BS", 4)),
+                text_recognition_batch_size=int(getattr(s, "TEXT_REC_BS", 4)),
 
                 # ====================================================
                 # CÁC MODULE BỔ SUNG
@@ -245,6 +293,7 @@ class OCREngine:
                 text_det_unclip_ratio=1.7,
                 text_det_box_thresh=0.45,
                 text_rec_score_thresh=0.25,
+                **pipeline_runtime_kwargs,
             )
         except Exception as e:
             logger.error("PPStructureV3 init FAILED: %r", e, exc_info=True)
@@ -283,7 +332,7 @@ class OCREngine:
                 textline_model = create_model(
                     textline_model_name,
                     model_dir=str(textline_model_dir),
-                    device="gpu",
+                    device=device,
                 )
                 self.orientation_verifier = TextLineOrientationVerifier(
                     detector,
@@ -312,7 +361,7 @@ class OCREngine:
 
         init_secs = time.time() - t0
         logger.info("[Engine] Pipeline init in %.2fs", init_secs)
-        logger.info("[Engine] device=%s", "gpu")
+        logger.info("[Engine] device=%s", device)
         logger.info("[Engine] det_model=%s", s.DET_MODEL_NAME)
         logger.info("[Engine] det_dir=%s", str(det_dir))
         logger.info("[Engine] rec_model=%s", s.REC_MODEL_NAME)

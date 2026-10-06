@@ -107,9 +107,7 @@ class OCREngine:
             path = Path(value)
             return path if path.is_absolute() else (project_root / path).resolve()
 
-        device = str(getattr(settings, "DEVICE", "gpu")).lower()
-        if not device.startswith("gpu"):
-            raise RuntimeError("CPU is forbidden. Please set DEVICE=gpu or gpu:<id>.")
+        device = settings.ocr_device
         if getattr(settings, "DISABLE_QT_HIDPI", False):
             os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
             os.environ.setdefault("QT_SCALE_FACTOR", "1")
@@ -136,7 +134,8 @@ class OCREngine:
         self.annot_dir.mkdir(parents=True, exist_ok=True)
         self._lock = asyncio.Lock()
 
-        _prepend_nvidia_dll_dirs()
+        if device == "gpu":
+            _prepend_nvidia_dll_dirs()
         try:
             from paddleocr import PaddleOCRVL
         except (ImportError, ModuleNotFoundError) as exc:

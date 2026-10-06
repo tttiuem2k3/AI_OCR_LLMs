@@ -1,0 +1,33 @@
+import fs from 'node:fs/promises';
+import { FileBlob, SpreadsheetFile } from '@oai/artifact-tool';
+
+const root = String.raw`E:\Asoft\AI_BEM\AI_BEM_Check_T08_09`;
+const input = `${root}\\DATA_BEM AI_MEIKO_30092026.xlsx`;
+const planPath = `${root}\\Accuracy_Recheck_T09_20261002\\artifact_update_plan_t09_accuracy_20261002.json`;
+const output = String.raw`E:\Asoft\AI_BEM\BEM_AI_PROJECT\.codex_tmp\artifact_t09_accuracy\DATA_BEM AI_MEIKO_30092026_candidate.xlsx`;
+const plan = JSON.parse(await fs.readFile(planPath, 'utf8'));
+const workbook = await SpreadsheetFile.importXlsx(await FileBlob.load(input));
+const sheet = workbook.worksheets.getItem('Kết quả tháng 09 và xử lý');
+
+if (plan.insertMissing) {
+  sheet.getRange(plan.targetRange).copyFrom(sheet.getRange(plan.sourceRange), 'all');
+  const values = [...plan.insertRowValues];
+  values[1] = new Date(values[1]);
+  sheet.getRange(`A${plan.insertRow}:T${plan.insertRow}`).values = [values];
+  sheet.getRange(`Q${plan.insertRow}`).format.fill = '#FFE994';
+}
+
+for (const update of plan.updates) {
+  if (update.mode === 'review') {
+    sheet.getRange(`P${update.row}:T${update.row}`).values = [update.values];
+    sheet.getRange(`Q${update.row}`).format.fill = `#${String(update.fill).slice(-6)}`;
+  } else {
+    sheet.getRange(`S${update.row}`).values = [update.values];
+    sheet.getRange(`Q${update.row}`).format.fill = '#77BC65';
+  }
+}
+
+sheet.getRange(plan.sttRange).values = plan.sttValues;
+const result = await SpreadsheetFile.exportXlsx(workbook);
+await result.save(output);
+console.log(JSON.stringify({ output, counts: plan.counts }, null, 2));

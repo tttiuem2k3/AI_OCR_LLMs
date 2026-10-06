@@ -79,13 +79,14 @@ CUSTOMSHEET:
 - ClearanceStatus: Nếu tiêu đề có "(THÔNG QUAN)" hoặc "(thông quan)" => ClearanceStatus = "YES" ; Nếu tiêu đề chỉ có các nội dung khác, ví dụ như "thông báo kết quả phân luồng" thì ClearanceStatus = "NO".
 - SupplierName lấy từ "Người xuất khẩu"; không lấy "Người nhập khẩu/Meiko".
 - StagingArea là dữ liệu dòng "Địa điểm xếp hàng", thường ở gần mục "Người ủy thác xuất khẩu"
+- ArrivalDate lấy đúng từ dòng "Ngày hàng đến" trên tờ khai, thường nằm gần khu vực "Phương tiện vận chuyển", "Địa điểm dỡ hàng", "Địa điểm xếp hàng". Không lấy "Ngày đến" trong mục "Thông tin trung chuyển", không lấy "Ngày cấp phép", "Ngày hoàn thành kiểm tra", "Ngày đăng ký", "Ngày phát hành" hoặc các ngày khác. Nếu không có dòng "Ngày hàng đến" rõ ràng thì ArrivalDate = null.
 - VoucherNo lấy từ "Số hóa đơn", bỏ tiền tố "A -", "B -", "C -" (nếu có); ví dụ "A - SKS2603-02HH" => "SKS2603-02HH", "B-00002649/00002650" => "00002649/00002650"
 - VoucherDate lấy từ "Ngày phát hành".
 - DeliveryTerm, Currency, Amount chỉ được phép lấy từ giá trị của cụm "Tổng trị giá hóa đơn" có dạng "<InvoiceCode> - <Incoterm> - <Currency> - <Amount>"; ví dụ "A - CIP - JPY - 245.000" => DeliveryTerm = "CIP", Currency = "JPY", Amount = 245000, hoặc "A - DAP - VND - 2.485.000" => DeliveryTerm = "DAP", Currency = "VND", Amount = 2485000, hoặc "C - CIF - USD - 1.397,96" => DeliveryTerm = "CIF", Currency = "USD", Amount = 1397.96 ,nếu không có cụm như vậy thì "DeliveryTerm" = null, "Currency" = null, "Amount" = 0. 
 - Amount bắt buộc chuẩn hóa theo định dạng số trên tờ khai Hải quan Việt Nam: dấu "." luôn là phân tách hàng nghìn, dấu "," là thập phân, không được suy luận định dạng theo Currency, ví dụ "Tổng trị giá hóa đơn: A - CIF - USD - 663.960" => DeliveryTerm = "CIF", Currency = "USD", Amount = 663960, tuyệt đối không được trả 663.96.
 - Description lấy từ "Phần ghi chú" nếu có.
 - ClearanceDate là "Ngày hoàn thành kiểm tra" ở gần vùng "Mục thông báo của Hải quan", nếu không có ngày thì null
-=> Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
+=> Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, ArrivalDate, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
 [[/DOC]]
 
 [[DOC:PO]]
@@ -242,13 +243,14 @@ CUSTOMSHEET:
 - ClearanceStatus: Nếu tiêu đề có "(THÔNG QUAN)" hoặc "(thông quan)" => ClearanceStatus = "YES" ; Nếu tiêu đề chỉ có các nội dung khác, ví dụ như "thông báo kết quả phân luồng" thì ClearanceStatus = "NO".
 - SupplierName lấy từ "Người xuất khẩu"; không lấy "Người nhập khẩu/Meiko".
 - StagingArea là dữ liệu dòng "Địa điểm xếp hàng", thường ở gần mục "Người ủy thác xuất khẩu"
+- ArrivalDate lấy đúng từ dòng "Ngày hàng đến" trên tờ khai, thường nằm gần khu vực "Phương tiện vận chuyển", "Địa điểm dỡ hàng", "Địa điểm xếp hàng". Không lấy "Ngày đến" trong mục "Thông tin trung chuyển", không lấy "Ngày cấp phép", "Ngày hoàn thành kiểm tra", "Ngày đăng ký", "Ngày phát hành" hoặc các ngày khác. Nếu không có dòng "Ngày hàng đến" rõ ràng thì ArrivalDate = null.
 - VoucherNo lấy từ "Số hóa đơn", bỏ tiền tố "A -", "B -", "C -"; ví dụ "A - SKS2603-02HH" => "SKS2603-02HH".
 - VoucherDate lấy từ "Ngày phát hành".
 - DeliveryTerm, Currency, Amount chỉ được phép lấy từ giá trị của cụm "Tổng trị giá hóa đơn" có dạng "<InvoiceCode> - <Incoterm> - <Currency> - <Amount>"; ví dụ "A - CIP - JPY - 245.000" => DeliveryTerm = "CIP", Currency = "JPY", Amount = 245000, hoặc "A - DAP - VND - 2.485.000" => DeliveryTerm = "DAP", Currency = "VND", Amount = 2485000, hoặc "C - CIF - USD - 1.397,96" => DeliveryTerm = "CIF", Currency = "USD", Amount = 1397.96 ,nếu không có cụm như vậy thì "DeliveryTerm" = null, "Currency" = null, "Amount" = 0. 
 - Amount bắt buộc chuẩn hóa theo định dạng số trên tờ khai Hải quan Việt Nam: dấu "." luôn là phân tách hàng nghìn, dấu "," là thập phân, không được suy luận định dạng theo Currency, ví dụ "Tổng trị giá hóa đơn: A - CIF - USD - 663.960" => DeliveryTerm = "CIF", Currency = "USD", Amount = 663960, tuyệt đối không được trả 663.96.
 - Description lấy từ "Phần ghi chú" nếu có.
 - ClearanceDate là "Ngày hoàn thành kiểm tra" ở gần vùng "Mục thông báo của Hải quan", nếu không có ngày thì null
-- Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
+- Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, ArrivalDate, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
 
 PO / CONTRACT:
 - KEY tách detail theo ContractNo, mỗi giá trị này là 1 mẫu tương đương 1 detail duy nhất, không được trùng lặp.
@@ -359,12 +361,15 @@ OTHER:
 - Mỗi detail chỉ được chứa OrderNo(chỉ là số thứ tự của detail, ví dụ "1", "2",...) và Các field được phép map của chính SectionType đó. Tuyệt đối không xuất hiện các field không thuộc SectionType hiện tại, kể cả để giá trị rỗng.
 
 *** Quy tắc chuẩn hóa dữ liệu
-- Các Field ngày (đuôi Date): chuẩn hóa về DD/MM/YYYY (ngày/tháng/năm)
-- Với TotalAmount/Amount: 
-+ Xác định SectionType trước khi chuẩn hóa; bỏ ký hiệu tiền và khoảng trắng trong số.
-+ Nếu SectionType = CUSTOMSHEET: dấu "." là phân tách hàng nghìn, dấu "," là thập phân; ví dụ "123.000" => 123000, "1234.567" => 1234567 "1.234,56" => 1234.56
-+ Nếu SectionType khác CUSTOMSHEET: dấu "," là phân tách hàng nghìn, dấu "." là thập phân; ví dụ: US$1, 200.00" = 1200, "1,200.0034" => 1200.0034 , "1,200.0000" => 1200, nếu phần thập phân chỉ gồm số 0 thì bỏ phần thập phân
-- Field không có dữ liệu: string => null, number => 0, date => null';
+- Các Field ngày (đuôi Date): chuẩn hóa về DD/MM/YYYY.
+- Với TotalAmount/Amount:
+  + Ưu tiên giá trị tại các dòng Total, Grand Total, Tổng tiền, Tổng cộng, Tổng giá trị hợp đồng,... hơn số tiền ở dòng chi tiết.
+  + Nếu cùng một số tiền xuất hiện nhiều lần nhưng dấu "." và "," bị OCR không nhất quán, phải đối chiếu các lần xuất hiện và ưu tiên cách ghi rõ ràng nhất tại dòng Total.
+  + Với VND, mặc định số tiền là số nguyên; không được tự động coi ".000" hoặc ",000" cuối số là phần thập phân nếu có bằng chứng đó là nhóm hàng nghìn.
+  + Ví dụ: "123.456,000", "123,456.000", "123,456,000" nếu cùng thể hiện một số tiền và dòng Total ghi rõ "123,456,000" thì chuẩn hóa thành 123456000.
+  + Nếu SectionType = CUSTOMSHEET: "." là phân tách hàng nghìn, "," là thập phân.
+  + Nếu SectionType khác CUSTOMSHEET và không có dấu hiệu OCR mơ hồ: "," là phân tách hàng nghìn, "." là thập phân; phần thập phân toàn số 0 thì bỏ, ví dụ 4321.00 => 4321, 6789.56 => 6789.56
+- Field không có dữ liệu: string => null, number => 0, date => null.';
 
 --- Dữ liệu đầu vào 
 DECLARE @PromptInput NVARCHAR(MAX) = N'***

@@ -2,7 +2,7 @@
 DECLARE @PromptBussiness NVARCHAR(MAX) = N'Bạn là AI kiểm tra tiêu chí "Số hợp đồng" trong nghiệp vụ kế toán thanh toán.
 * NHIỆM VỤ CHÍNH
 1. Đọc các mẫu dữ liệu đầu vào, mỗi mẫu nằm trong một cặp dấu {}.
-2. So khớp dữ liệu số hợp đồng giữa CONTRACT và chứng từ nghiệm thu/bàn giao gồm INSPECTION hoặc HANDOVER.
+2. So khớp dữ liệu số hợp đồng giữa CONTRACT và chứng từ nghiệm thu/bàn giao gồm INSPECTION.
 3. Trả về đúng 01 JSON theo schema bắt buộc.';
 
 --- Thông tin quy tắc so sánh
@@ -24,12 +24,12 @@ Bước 1: Chuẩn hóa số hợp đồng
 
 Bước 2: So sánh
 1. Tạo ContractSet từ toàn bộ số hợp đồng trên các chứng từ CONTRACT sau khi tách danh sách, mở rộng tiền tố và chuẩn hóa.
-2. Tạo AcceptanceSet từ toàn bộ số hợp đồng trên các chứng từ INSPECTION hoặc HANDOVER sau khi tách danh sách, mở rộng tiền tố và chuẩn hóa.
-3. INSPECTION và HANDOVER đều được xem là chứng từ nghiệm thu/bàn giao dùng để đối chiếu số hợp đồng với CONTRACT hoặc ĐNTT.
+2. Tạo AcceptanceSet từ toàn bộ số hợp đồng trên các chứng từ INSPECTION sau khi tách danh sách, mở rộng tiền tố và chuẩn hóa.
+3. INSPECTION đều được xem là chứng từ nghiệm thu/bàn giao dùng để đối chiếu số hợp đồng với CONTRACT hoặc ĐNTT.
 4. Mỗi số hợp đồng trong ContractSet phải tồn tại trong AcceptanceSet.
 5. Mỗi số hợp đồng trong AcceptanceSet phải tồn tại trong ContractSet.
 6. Số hợp đồng phải khớp sau khi tách danh sách, mở rộng tiền tố và chuẩn hóa (2 số hợp đồng khớp nhau trên 80% ký tự được coi là OK)
-7. Nếu có ít nhất một số hợp đồng trên CONTRACT không tồn tại trong INSPECTION/HANDOVER, hoặc ngược lại, thì CriteriaStatus = "NG".
+7. Nếu có ít nhất một số hợp đồng trên CONTRACT không tồn tại trong INSPECTION, hoặc ngược lại, thì CriteriaStatus = "NG".
 8. Nếu ContractSet và AcceptanceSet khớp nhau đầy đủ sau chuẩn hóa thì CriteriaStatus = "OK".
 9. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
@@ -37,8 +37,8 @@ Bước 3: Trả kết quả
 Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 1. Ưu tiên kiểm tra thiếu dữ liệu trước:
    - Thiếu chứng từ CONTRACT cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-   - Thiếu cả INSPECTION và HANDOVER cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-   - Có chứng từ CONTRACT, INSPECTION hoặc HANDOVER nhưng thiếu trường Số hợp đồng => CriteriaStatus = "BLANK".
+   - Thiếu INSPECTION cần dùng để đối chiếu => CriteriaStatus = "BLANK".
+   - Có chứng từ CONTRACT, INSPECTION nhưng thiếu trường Số hợp đồng => CriteriaStatus = "BLANK".
 2. Chỉ khi đủ dữ liệu bắt buộc mới được kiểm tra sai lệch:
    - Nếu số hợp đồng giữa ContractSet và AcceptanceSet không khớp đầy đủ => CriteriaStatus = "NG".
 3. Nếu đủ dữ liệu và tất cả số hợp đồng giữa ContractSet và AcceptanceSet khớp nhau => CriteriaStatus = "OK".
@@ -48,7 +48,7 @@ Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
 - Nếu BLANK do thiếu dữ liệu số hợp đồng trong file có sẵn thì liệt kê chính xác tên file bị thiếu dữ liệu số hợp đồng.
-- Nếu BLANK do thiếu hẳn loại chứng từ CONTRACT hoặc thiếu hẳn chứng từ INSPECTION/HANDOVER thì FileName trả chuỗi rỗng "".
+- Nếu BLANK do thiếu hẳn loại chứng từ CONTRACT hoặc thiếu hẳn chứng từ INSPECTION thì FileName trả chuỗi rỗng "".
 - Nếu NG thì liệt kê chính xác tên file có số hợp đồng không khớp hoặc liên quan trực tiếp đến sai lệch.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -59,8 +59,8 @@ Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hợp đồng:
-- Nếu BLANK do thiếu CONTRACT, INSPECTION/HANDOVER hoặc thiếu dữ liệu số hợp đồng => nêu rõ thiếu loại chứng từ nào hoặc file nào thiếu dữ liệu, cần kiểm tra lại.
-- Nếu NG do không khớp số hợp đồng => nêu rõ không khớp số hợp đồng giữa CONTRACT file nào với INSPECTION/HANDOVER file nào, cần kiểm tra lại.
+- Nếu BLANK do thiếu CONTRACT, INSPECTION hoặc thiếu dữ liệu số hợp đồng => nêu rõ thiếu loại chứng từ nào hoặc file nào thiếu dữ liệu, cần kiểm tra lại.
+- Nếu NG do không khớp số hợp đồng => nêu rõ không khớp số hợp đồng giữa CONTRACT file nào với INSPECTION file nào, cần kiểm tra lại.
 - Nếu OK do đối chiếu khớp => nêu ngắn gọn rằng "Số hợp đồng đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.
 - Nếu CriteriaStatus = "NG" thì Description không được nói thiếu chứng từ hoặc thiếu dữ liệu.
@@ -81,9 +81,6 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 { Loại chứng từ: {{this.SectionType}} | Số hợp đồng: {{this.ContractNo}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{#if (eq this.SectionType "INSPECTION")}}
-{ Loại chứng từ: {{this.SectionType}} | Số hợp đồng: {{this.ContractNo}} | Tên file: {{this.FileName}} }
-{{/if}}
-{{#if (eq this.SectionType "HANDOVER")}}
 { Loại chứng từ: {{this.SectionType}} | Số hợp đồng: {{this.ContractNo}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{/each}}';

@@ -94,12 +94,12 @@ CRITERION_NAME_CATALOG: dict = {
 
 
 def _normalize_doc_type(name: str) -> str:
-	# Chuẩn hóa mã chứng từ về dạng IN HOA + bỏ ký tự đặc biệt.
+	"""Chuẩn hóa mã chứng từ về dạng IN HOA và chỉ giữ chữ/số."""
 	return re.sub(r"[^A-Z0-9]", "", str(name or "").upper())
 
 
 def _norm_key(name: str) -> str:
-	# Chuẩn hóa key chung: bỏ dấu tiếng Việt, bỏ khoảng trắng/ký tự đặc biệt, IN HOA.
+	"""Chuẩn hóa key để so khớp alias không phụ thuộc dấu và ký tự ngăn cách."""
 	raw = str(name or "").strip()
 	if not raw:
 		return ""
@@ -148,6 +148,331 @@ CRITERION_ALIAS_MAP = _build_alias_map(CRITERION_NAME_CATALOG)
 
 OPTIONAL_COMPARE_DOC_TYPES: set[str] = {"RINGI"}
 
+DELIVERY_TERM_DOCUMENT_TYPES: tuple[str, ...] = (
+	"PO", "CUSTOMSHEET", "INVOICE", "COMMERCIALINVOICE",
+)
+
+DELIVERY_TERM_INCOTERM_CODES: tuple[str, ...] = (
+	"EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT",
+	"CIP", "DAP", "DPU", "DAT", "DDP", "DDU",
+)
+
+DELIVERY_TERM_INCOTERM_ALIASES: dict[str, tuple[str, ...]] = {
+	"EXW": ("EX WORKS", "EX WORK", "EXWORK", "EXWORKS", "EX FACTORY", "EXW FACTORY"),
+	"FCA": ("FREE CARRIER",),
+	"FAS": ("FREE ALONGSIDE SHIP",),
+	"FOB": ("FREE ON BOARD",),
+	"CFR": ("COST AND FREIGHT", "COST FREIGHT", "COST & FREIGHT", "C AND F", "C&F"),
+	"CIF": (
+		"COST INSURANCE FREIGHT",
+		"COST INSURANCE AND FREIGHT",
+		"COST, INSURANCE AND FREIGHT",
+		"COST & INSURANCE & FREIGHT",
+	),
+	"CPT": ("CARRIAGE PAID TO",),
+	"CIP": ("CARRIAGE AND INSURANCE PAID TO", "CARRIAGE INSURANCE PAID TO"),
+	"DAP": ("DELIVERED AT PLACE",),
+	"DPU": ("DELIVERED AT PLACE UNLOADED",),
+	"DAT": ("DELIVERED AT TERMINAL",),
+	"DDP": ("DELIVERED DUTY PAID",),
+	"DDU": ("DELIVERED DUTY UNPAID",),
+}
+
+DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD = 0.8
+
+# Các nhóm tỉnh/thành được coi là tương thích theo quy ước nghiệp vụ khi
+# đối chiếu điều kiện giao hàng. Chỉ cần thêm cặp/nhóm mới tại đây, không sửa
+# logic so sánh bên dưới. Ví dụ hiện tại: TOKYO và OSAKA được coi là cùng nhóm.
+DELIVERY_TERM_COMPATIBLE_PROVINCE_GROUPS: tuple[frozenset[str], ...] = (
+	frozenset({"TOKYO", "OSAKA"}),
+)
+
+DELIVERY_TERM_NOISE_CATALOG: tuple[str, ...] = (
+	"T/T", "T/ T", "T/T BASE", "TT BASE", "BY TT", "PAYMENT",
+	"PAYMENT TERM", "L/C", "LC", "NET 30", "NET 60",
+)
+
+DELIVERY_TERM_UNKNOWN_LOCATION_ALIASES: dict[str, tuple[str, ...]] = {
+	"MEIKO": ("MEIKO", "MK"),
+}
+
+# Địa danh giao nhận không phải đơn vị hành chính cấp tỉnh. Khi alias nằm ở đầu
+# chuỗi, phần mô tả vận chuyển hoặc dữ liệu OCR phía sau sẽ không tham gia so sánh.
+DELIVERY_TERM_LOCATION_CATALOG: dict[str, dict[str, object]] = {
+	"NOI_BAI": {
+		"country": "VIETNAM",
+		"province": "HA_NOI",
+		"display": "NOI BAI",
+		"aliases": ("NOI BAI", "NOIBAI", "NỘI BÀI", "SAN BAY NOI BAI", "SÂN BAY NỘI BÀI"),
+	},
+	"LOYANG": {
+		"country": "SINGAPORE",
+		"display": "LOYANG",
+		"infer_country": True,
+		"aliases": ("LOYANG", "LOYANG DC", "LOYANG DISTRIBUTION CENTER", "LOYANG DISTRIBUTION CENTRE"),
+	},
+	"JURONG": {
+		"country": "SINGAPORE",
+		"display": "JURONG",
+		"infer_country": True,
+		"aliases": ("JURONG", "JURONG EAST", "JURONG WEST", "JURONG ISLAND", "JURONG GATEWAY", "JURONG LAKE DISTRICT"),
+	},
+	"TUAS": {
+		"country": "SINGAPORE",
+		"display": "TUAS",
+		"infer_country": True,
+		"aliases": ("TUAS", "TUAS PORT", "TUAS SOUTH", "TUAS VIEW", "TUAS BAY", "TUAS LINK", "TUAS INDUSTRIAL ESTATE"),
+	},
+	"CHANGI": {
+		"country": "SINGAPORE",
+		"display": "CHANGI",
+		"infer_country": True,
+		"aliases": ("CHANGI", "CHANGI AIRPORT", "CHANGI BUSINESS PARK", "CHANGI AVIATION PARK", "CHANGI SOUTH", "CHANGI BAY"),
+	},
+	"WOODLANDS": {
+		"country": "SINGAPORE",
+		"display": "WOODLANDS",
+		"infer_country": True,
+		"aliases": ("WOODLANDS", "WOODLANDS REGIONAL CENTRE", "WOODLANDS REGIONAL CENTER", "WOODLANDS INDUSTRIAL PARK"),
+	},
+	"TAMPINES": {
+		"country": "SINGAPORE",
+		"display": "TAMPINES",
+		"infer_country": True,
+		"aliases": ("TAMPINES", "TAMPINES REGIONAL CENTRE", "TAMPINES REGIONAL CENTER", "TAMPINES LOGISTICS PARK"),
+	},
+	"PIONEER": {
+		"country": "SINGAPORE",
+		"display": "PIONEER",
+		"infer_country": True,
+		"aliases": ("PIONEER", "PIONEER SECTOR", "PIONEER ROAD", "PIONEER JUNCTION"),
+	},
+	"BOON_LAY": {
+		"country": "SINGAPORE",
+		"display": "BOON LAY",
+		"infer_country": True,
+		"aliases": ("BOON LAY", "BOONLAY", "BOON LAY WAY"),
+	},
+	"SELETAR": {
+		"country": "SINGAPORE",
+		"display": "SELETAR",
+		"infer_country": True,
+		"aliases": ("SELETAR", "SELETAR AIRPORT", "SELETAR AEROSPACE PARK", "SELETAR HILLS"),
+	},
+	"SUNGEI_KADUT": {
+		"country": "SINGAPORE",
+		"display": "SUNGEI KADUT",
+		"infer_country": True,
+		"aliases": ("SUNGEI KADUT", "SUNGEI KADUT INDUSTRIAL ESTATE", "SUNGEI KADUT LOOP", "SUNGEI KADUT STREET"),
+	},
+	"KALLANG": {
+		"country": "SINGAPORE",
+		"display": "KALLANG",
+		"infer_country": True,
+		"aliases": ("KALLANG", "KALLANG WAY", "KALLANG BAHRU", "KALLANG BASIN"),
+	},
+	"PAYA_LEBAR": {
+		"country": "SINGAPORE",
+		"display": "PAYA LEBAR",
+		"infer_country": True,
+		"aliases": ("PAYA LEBAR", "PAYALEBAR", "PAYA LEBAR CENTRAL", "PAYA LEBAR AIR BASE"),
+	},
+	"BUKIT_BATOK": {
+		"country": "SINGAPORE",
+		"display": "BUKIT BATOK",
+		"infer_country": True,
+		"aliases": ("BUKIT BATOK", "BUKITBATOK", "BUKIT BATOK INDUSTRIAL PARK"),
+	},
+	"SEMBAWANG": {
+		"country": "SINGAPORE",
+		"display": "SEMBAWANG",
+		"infer_country": True,
+		"aliases": ("SEMBAWANG", "SEMBAWANG WHARVES", "SEMBAWANG SHIPYARD"),
+	},
+	"YISHUN": {
+		"country": "SINGAPORE",
+		"display": "YISHUN",
+		"infer_country": True,
+		"aliases": ("YISHUN", "YISHUN INDUSTRIAL PARK", "YISHUN AVENUE"),
+	},
+	"BEDOK": {
+		"country": "SINGAPORE",
+		"display": "BEDOK",
+		"infer_country": True,
+		"aliases": ("BEDOK", "BEDOK INDUSTRIAL PARK", "BEDOK NORTH"),
+	},
+	"PASIR_RIS": {
+		"country": "SINGAPORE",
+		"display": "PASIR RIS",
+		"infer_country": True,
+		"aliases": ("PASIR RIS", "PASIRRIS", "PASIR RIS INDUSTRIAL DRIVE"),
+	},
+	"ANG_MO_KIO": {
+		"country": "SINGAPORE",
+		"display": "ANG MO KIO",
+		"infer_country": True,
+		"aliases": ("ANG MO KIO", "ANGMOKIO", "AMK", "ANG MO KIO INDUSTRIAL PARK"),
+	},
+}
+
+DELIVERY_TERM_COUNTRY_CATALOG: dict[str, dict[str, tuple[str, ...]]] = {
+	"VIETNAM": {"aliases": ("VIETNAM", "VIET NAM", "VN", "VIE", "VIỆT NAM", "SOCIALIST REPUBLIC OF VIETNAM")},
+	"JAPAN": {"aliases": ("JAPAN", "JP", "JPN", "NHAT BAN", "NHẬT BẢN", "NIPPON", "NIHON", "日本")},
+	"CHINA": {"aliases": ("CHINA", "CN", "CHN", "TRUNG QUOC", "TRUNG QUỐC", "PEOPLE S REPUBLIC OF CHINA", "PRC", "中国", "中國")},
+	"TAIWAN": {"aliases": ("TAIWAN", "TAI WAN", "TW", "TWN", "DAI LOAN", "ĐÀI LOAN", "REPUBLIC OF CHINA", "ROC", "台灣", "臺灣")},
+	"SINGAPORE": {"aliases": ("SINGAPORE", "SG", "SGP", "SINGAPURA", "新加坡")},
+}
+
+# Danh mục dùng đơn vị hành chính cấp tỉnh hiện hành; tên đơn vị cũ được giữ làm alias
+# để nhận diện chứng từ lịch sử mà vẫn quy về đơn vị hiện tại sau sáp nhập.
+DELIVERY_TERM_PROVINCE_CATALOG: dict[str, dict[str, object]] = {
+	# Việt Nam: 34 tỉnh/thành hiện hành.
+	"HA_NOI": {"country": "VIETNAM", "aliases": ("HA NOI", "HANOI", "HÀ NỘI", "THU DO HA NOI", "THỦ ĐÔ HÀ NỘI")},
+	"HAI_PHONG": {"country": "VIETNAM", "aliases": ("HAI PHONG", "HP", "HẢI PHÒNG", "HAI DUONG", "HẢI DƯƠNG")},
+	"HUE": {"country": "VIETNAM", "aliases": ("HUE", "HUẾ", "THUA THIEN HUE", "THỪA THIÊN HUẾ")},
+	"DA_NANG": {"country": "VIETNAM", "aliases": ("DA NANG", "DANANG", "ĐÀ NẴNG", "QUANG NAM", "QUẢNG NAM")},
+	"CAN_THO": {"country": "VIETNAM", "aliases": ("CAN THO", "CANTHO", "CẦN THƠ", "HAU GIANG", "HẬU GIANG", "SOC TRANG", "SÓC TRĂNG")},
+	"HO_CHI_MINH_CITY": {"country": "VIETNAM", "aliases": ("HO CHI MINH", "HO CHI MINH CITY", "HCMC", "HCM", "TP HCM", "TPHCM", "SAIGON", "SAI GON", "THANH PHO HO CHI MINH", "THÀNH PHỐ HỒ CHÍ MINH", "BINH DUONG", "BÌNH DƯƠNG", "BA RIA VUNG TAU", "BÀ RỊA VŨNG TÀU", "VUNG TAU", "VŨNG TÀU")},
+	"LAI_CHAU": {"country": "VIETNAM", "aliases": ("LAI CHAU", "LAI CHÂU")},
+	"DIEN_BIEN": {"country": "VIETNAM", "aliases": ("DIEN BIEN", "ĐIỆN BIÊN")},
+	"SON_LA": {"country": "VIETNAM", "aliases": ("SON LA", "SƠN LA")},
+	"LANG_SON": {"country": "VIETNAM", "aliases": ("LANG SON", "LẠNG SƠN")},
+	"QUANG_NINH": {"country": "VIETNAM", "aliases": ("QUANG NINH", "QUẢNG NINH")},
+	"THANH_HOA": {"country": "VIETNAM", "aliases": ("THANH HOA", "THANH HÓA")},
+	"NGHE_AN": {"country": "VIETNAM", "aliases": ("NGHE AN", "NGHỆ AN")},
+	"HA_TINH": {"country": "VIETNAM", "aliases": ("HA TINH", "HÀ TĨNH")},
+	"CAO_BANG": {"country": "VIETNAM", "aliases": ("CAO BANG", "CAO BẰNG")},
+	"TUYEN_QUANG": {"country": "VIETNAM", "aliases": ("TUYEN QUANG", "TUYÊN QUANG", "HA GIANG", "HÀ GIANG")},
+	"LAO_CAI": {"country": "VIETNAM", "aliases": ("LAO CAI", "LÀO CAI", "YEN BAI", "YÊN BÁI")},
+	"THAI_NGUYEN": {"country": "VIETNAM", "aliases": ("THAI NGUYEN", "THÁI NGUYÊN", "BAC KAN", "BẮC KẠN")},
+	"PHU_THO": {"country": "VIETNAM", "aliases": ("PHU THO", "PHÚ THỌ", "VINH PHUC", "VĨNH PHÚC", "HOA BINH", "HÒA BÌNH")},
+	"BAC_NINH": {"country": "VIETNAM", "aliases": ("BAC NINH", "BẮC NINH", "BAC GIANG", "BẮC GIANG")},
+	"HUNG_YEN": {"country": "VIETNAM", "aliases": ("HUNG YEN", "HƯNG YÊN", "THAI BINH", "THÁI BÌNH")},
+	"NINH_BINH": {"country": "VIETNAM", "aliases": ("NINH BINH", "NINH BÌNH", "HA NAM", "HÀ NAM", "NAM DINH", "NAM ĐỊNH")},
+	"QUANG_TRI": {"country": "VIETNAM", "aliases": ("QUANG TRI", "QUẢNG TRỊ", "QUANG BINH", "QUẢNG BÌNH")},
+	"QUANG_NGAI": {"country": "VIETNAM", "aliases": ("QUANG NGAI", "QUẢNG NGÃI", "KON TUM", "KONTUM")},
+	"GIA_LAI": {"country": "VIETNAM", "aliases": ("GIA LAI", "BINH DINH", "BÌNH ĐỊNH", "QUY NHON", "QUY NHƠN")},
+	"KHANH_HOA": {"country": "VIETNAM", "aliases": ("KHANH HOA", "KHÁNH HÒA", "NINH THUAN", "NINH THUẬN", "NHA TRANG")},
+	"LAM_DONG": {"country": "VIETNAM", "aliases": ("LAM DONG", "LÂM ĐỒNG", "DAK NONG", "ĐẮK NÔNG", "DAC NONG", "BINH THUAN", "BÌNH THUẬN", "DA LAT", "DALAT", "ĐÀ LẠT")},
+	"DAK_LAK": {"country": "VIETNAM", "aliases": ("DAK LAK", "ĐẮK LẮK", "DAC LAC", "DAKLAK", "PHU YEN", "PHÚ YÊN", "BUON MA THUOT", "BUÔN MA THUỘT")},
+	"DONG_NAI": {"country": "VIETNAM", "aliases": ("DONG NAI", "ĐỒNG NAI", "BINH PHUOC", "BÌNH PHƯỚC", "BIEN HOA", "BIÊN HÒA")},
+	"TAY_NINH": {"country": "VIETNAM", "aliases": ("TAY NINH", "TÂY NINH", "LONG AN")},
+	"VINH_LONG": {"country": "VIETNAM", "aliases": ("VINH LONG", "VĨNH LONG", "BEN TRE", "BẾN TRE", "TRA VINH", "TRÀ VINH")},
+	"DONG_THAP": {"country": "VIETNAM", "aliases": ("DONG THAP", "ĐỒNG THÁP", "TIEN GIANG", "TIỀN GIANG")},
+	"CA_MAU": {"country": "VIETNAM", "aliases": ("CA MAU", "CÀ MAU", "BAC LIEU", "BẠC LIÊU")},
+	"AN_GIANG": {"country": "VIETNAM", "aliases": ("AN GIANG", "KIEN GIANG", "KIÊN GIANG", "PHU QUOC", "PHÚ QUỐC")},
+	# Nhật Bản: 47 đô/đạo/phủ/tỉnh.
+	"HOKKAIDO": {"country": "JAPAN", "aliases": ("HOKKAIDO DO", "HOKKAIDO PREFECTURE", "北海道", "SAPPORO", "札幌")},
+	"AOMORI": {"country": "JAPAN", "aliases": ("AOMORI KEN", "AOMORI PREFECTURE", "青森県")},
+	"IWATE": {"country": "JAPAN", "aliases": ("IWATE KEN", "IWATE PREFECTURE", "岩手県")},
+	"MIYAGI": {"country": "JAPAN", "aliases": ("MIYAGI KEN", "MIYAGI PREFECTURE", "宮城県", "SENDAI", "仙台")},
+	"AKITA": {"country": "JAPAN", "aliases": ("AKITA KEN", "AKITA PREFECTURE", "秋田県")},
+	"YAMAGATA": {"country": "JAPAN", "aliases": ("YAMAGATA KEN", "YAMAGATA PREFECTURE", "山形県")},
+	"FUKUSHIMA": {"country": "JAPAN", "aliases": ("FUKUSHIMA KEN", "FUKUSHIMA PREFECTURE", "福島県")},
+	"IBARAKI": {"country": "JAPAN", "aliases": ("IBARAKI KEN", "IBARAKI PREFECTURE", "茨城県")},
+	"TOCHIGI": {"country": "JAPAN", "aliases": ("TOCHIGI KEN", "TOCHIGI PREFECTURE", "栃木県")},
+	"GUNMA": {"country": "JAPAN", "aliases": ("GUNMA KEN", "GUNMA PREFECTURE", "群馬県")},
+	"SAITAMA": {"country": "JAPAN", "aliases": ("SAITAMA KEN", "SAITAMA PREFECTURE", "埼玉県")},
+	"CHIBA": {"country": "JAPAN", "aliases": ("CHIBA KEN", "CHIBA PREFECTURE", "千葉県")},
+	"TOKYO": {"country": "JAPAN", "aliases": ("TOKYO TO", "TOKYO PREFECTURE", "東京都")},
+	"KANAGAWA": {"country": "JAPAN", "aliases": ("KANAGAWA KEN", "KANAGAWA PREFECTURE", "神奈川県", "YOKOHAMA", "KAWASAKI", "横浜", "川崎")},
+	"NIIGATA": {"country": "JAPAN", "aliases": ("NIIGATA KEN", "NIIGATA PREFECTURE", "新潟県")},
+	"TOYAMA": {"country": "JAPAN", "aliases": ("TOYAMA KEN", "TOYAMA PREFECTURE", "富山県")},
+	"ISHIKAWA": {"country": "JAPAN", "aliases": ("ISHIKAWA KEN", "ISHIKAWA PREFECTURE", "石川県")},
+	"FUKUI": {"country": "JAPAN", "aliases": ("FUKUI KEN", "FUKUI PREFECTURE", "福井県")},
+	"YAMANASHI": {"country": "JAPAN", "aliases": ("YAMANASHI KEN", "YAMANASHI PREFECTURE", "山梨県")},
+	"NAGANO": {"country": "JAPAN", "aliases": ("NAGANO KEN", "NAGANO PREFECTURE", "長野県")},
+	"GIFU": {"country": "JAPAN", "aliases": ("GIFU KEN", "GIFU PREFECTURE", "岐阜県")},
+	"SHIZUOKA": {"country": "JAPAN", "aliases": ("SHIZUOKA KEN", "SHIZUOKA PREFECTURE", "静岡県")},
+	"AICHI": {"country": "JAPAN", "aliases": ("AICHI KEN", "AICHI PREFECTURE", "愛知県", "NAGOYA", "名古屋")},
+	"MIE": {"country": "JAPAN", "aliases": ("MIE KEN", "MIE PREFECTURE", "三重県")},
+	"SHIGA": {"country": "JAPAN", "aliases": ("SHIGA KEN", "SHIGA PREFECTURE", "滋賀県")},
+	"KYOTO": {"country": "JAPAN", "aliases": ("KYOTO FU", "KYOTO PREFECTURE", "京都府")},
+	"OSAKA": {"country": "JAPAN", "aliases": ("OSAKA FU", "OSAKA PREFECTURE", "大阪府")},
+	"HYOGO": {"country": "JAPAN", "aliases": ("HYOGO KEN", "HYOGO PREFECTURE", "兵庫県", "KOBE", "神戸")},
+	"NARA": {"country": "JAPAN", "aliases": ("NARA KEN", "NARA PREFECTURE", "奈良県")},
+	"WAKAYAMA": {"country": "JAPAN", "aliases": ("WAKAYAMA KEN", "WAKAYAMA PREFECTURE", "和歌山県")},
+	"TOTTORI": {"country": "JAPAN", "aliases": ("TOTTORI KEN", "TOTTORI PREFECTURE", "鳥取県")},
+	"SHIMANE": {"country": "JAPAN", "aliases": ("SHIMANE KEN", "SHIMANE PREFECTURE", "島根県")},
+	"OKAYAMA": {"country": "JAPAN", "aliases": ("OKAYAMA KEN", "OKAYAMA PREFECTURE", "岡山県")},
+	"HIROSHIMA": {"country": "JAPAN", "aliases": ("HIROSHIMA KEN", "HIROSHIMA PREFECTURE", "広島県")},
+	"YAMAGUCHI": {"country": "JAPAN", "aliases": ("YAMAGUCHI KEN", "YAMAGUCHI PREFECTURE", "山口県")},
+	"TOKUSHIMA": {"country": "JAPAN", "aliases": ("TOKUSHIMA KEN", "TOKUSHIMA PREFECTURE", "徳島県")},
+	"KAGAWA": {"country": "JAPAN", "aliases": ("KAGAWA KEN", "KAGAWA PREFECTURE", "香川県")},
+	"EHIME": {"country": "JAPAN", "aliases": ("EHIME KEN", "EHIME PREFECTURE", "愛媛県")},
+	"KOCHI": {"country": "JAPAN", "aliases": ("KOCHI KEN", "KOCHI PREFECTURE", "高知県")},
+	"FUKUOKA": {"country": "JAPAN", "aliases": ("FUKUOKA KEN", "FUKUOKA PREFECTURE", "福岡県", "FUKUOKA CITY", "福岡市")},
+	"SAGA": {"country": "JAPAN", "aliases": ("SAGA KEN", "SAGA PREFECTURE", "佐賀県")},
+	"NAGASAKI": {"country": "JAPAN", "aliases": ("NAGASAKI KEN", "NAGASAKI PREFECTURE", "長崎県")},
+	"KUMAMOTO": {"country": "JAPAN", "aliases": ("KUMAMOTO KEN", "KUMAMOTO PREFECTURE", "熊本県")},
+	"OITA": {"country": "JAPAN", "aliases": ("OITA KEN", "OITA PREFECTURE", "大分県")},
+	"MIYAZAKI": {"country": "JAPAN", "aliases": ("MIYAZAKI KEN", "MIYAZAKI PREFECTURE", "宮崎県")},
+	"KAGOSHIMA": {"country": "JAPAN", "aliases": ("KAGOSHIMA KEN", "KAGOSHIMA PREFECTURE", "鹿児島県")},
+	"OKINAWA": {"country": "JAPAN", "aliases": ("OKINAWA KEN", "OKINAWA PREFECTURE", "沖縄県", "NAHA", "那覇")},
+	# Trung Quốc: 33 đơn vị cấp tỉnh, không gộp Đài Loan.
+	"BEIJING": {"country": "CHINA", "aliases": ("BEIJING SHI", "PEKING", "北京", "北京市")},
+	"TIANJIN": {"country": "CHINA", "aliases": ("TIANJIN SHI", "天津", "天津市")},
+	"SHANGHAI": {"country": "CHINA", "aliases": ("SHANGHAI SHI", "上海", "上海市")},
+	"CHONGQING": {"country": "CHINA", "aliases": ("CHONGQING SHI", "CHUNGKING", "重庆", "重庆市", "重慶", "重慶市")},
+	"HEBEI": {"country": "CHINA", "aliases": ("HEBEI SHENG", "SHIJIAZHUANG", "河北", "河北省", "石家庄", "石家莊")},
+	"SHANXI": {"country": "CHINA", "aliases": ("SHANXI SHENG", "TAIYUAN", "山西", "山西省", "太原")},
+	"LIAONING": {"country": "CHINA", "aliases": ("LIAONING SHENG", "SHENYANG", "DALIAN", "辽宁", "辽宁省", "遼寧", "遼寧省", "沈阳", "瀋陽", "大连", "大連")},
+	"JILIN": {"country": "CHINA", "aliases": ("JILIN SHENG", "CHANGCHUN", "吉林", "吉林省", "长春", "長春")},
+	"HEILONGJIANG": {"country": "CHINA", "aliases": ("HEILONGJIANG SHENG", "HARBIN", "黑龙江", "黑龙江省", "黑龍江", "黑龍江省", "哈尔滨", "哈爾濱")},
+	"JIANGSU": {"country": "CHINA", "aliases": ("JIANGSU SHENG", "NANJING", "SUZHOU", "江苏", "江苏省", "江蘇", "江蘇省", "南京", "苏州", "蘇州")},
+	"ZHEJIANG": {"country": "CHINA", "aliases": ("ZHEJIANG SHENG", "HANGZHOU", "NINGBO", "浙江", "浙江省", "杭州", "宁波", "寧波")},
+	"ANHUI": {"country": "CHINA", "aliases": ("ANHUI SHENG", "HEFEI", "安徽", "安徽省", "合肥")},
+	"FUJIAN": {"country": "CHINA", "aliases": ("FUJIAN SHENG", "FUZHOU", "XIAMEN", "福建", "福建省", "福州", "厦门", "廈門")},
+	"JIANGXI": {"country": "CHINA", "aliases": ("JIANGXI SHENG", "NANCHANG", "江西", "江西省", "南昌")},
+	"SHANDONG": {"country": "CHINA", "aliases": ("SHANDONG SHENG", "JINAN", "QINGDAO", "山东", "山东省", "山東", "山東省", "济南", "濟南", "青岛", "青島")},
+	"HENAN": {"country": "CHINA", "aliases": ("HENAN SHENG", "ZHENGZHOU", "河南", "河南省", "郑州", "鄭州")},
+	"HUBEI": {"country": "CHINA", "aliases": ("HUBEI SHENG", "WUHAN", "湖北", "湖北省", "武汉", "武漢")},
+	"HUNAN": {"country": "CHINA", "aliases": ("HUNAN SHENG", "CHANGSHA", "湖南", "湖南省", "长沙", "長沙")},
+	"GUANGDONG": {"country": "CHINA", "aliases": ("GUANGDONG SHENG", "GUANGZHOU", "GUANG ZHOU", "SHENZHEN", "DONGGUAN", "广东", "广东省", "廣東", "廣東省", "广州", "廣州", "深圳", "东莞", "東莞")},
+	"HAINAN": {"country": "CHINA", "aliases": ("HAINAN SHENG", "HAIKOU", "海南", "海南省", "海口")},
+	"SICHUAN": {"country": "CHINA", "aliases": ("SICHUAN SHENG", "SZECHUAN", "CHENGDU", "四川", "四川省", "成都")},
+	"GUIZHOU": {"country": "CHINA", "aliases": ("GUIZHOU SHENG", "KWEICHOW", "GUIYANG", "贵州", "贵州省", "貴州", "貴州省", "贵阳", "貴陽")},
+	"YUNNAN": {"country": "CHINA", "aliases": ("YUNNAN SHENG", "KUNMING", "云南", "云南省", "雲南", "雲南省", "昆明")},
+	"SHAANXI": {"country": "CHINA", "aliases": ("SHAANXI SHENG", "SHENSI", "XI AN", "XIAN", "陕西", "陕西省", "陝西", "陝西省", "西安")},
+	"GANSU": {"country": "CHINA", "aliases": ("GANSU SHENG", "KANSU", "LANZHOU", "甘肃", "甘肃省", "甘肅", "甘肅省", "兰州", "蘭州")},
+	"QINGHAI": {"country": "CHINA", "aliases": ("QINGHAI SHENG", "TSINGHAI", "XINING", "青海", "青海省", "西宁", "西寧")},
+	"INNER_MONGOLIA": {"country": "CHINA", "aliases": ("INNER MONGOLIA", "INNER MONGOLIA AUTONOMOUS REGION", "NEI MONGOL", "NEIMENGGU", "内蒙古", "内蒙古自治区", "內蒙古", "內蒙古自治區")},
+	"GUANGXI": {"country": "CHINA", "aliases": ("GUANGXI ZHUANG", "GUANGXI ZHUANG AUTONOMOUS REGION", "NANNING", "广西", "广西壮族自治区", "廣西", "廣西壯族自治區", "南宁", "南寧")},
+	"TIBET": {"country": "CHINA", "aliases": ("TIBET", "TIBET AUTONOMOUS REGION", "XIZANG", "LHASA", "西藏", "西藏自治区", "西藏自治區", "拉萨", "拉薩")},
+	"NINGXIA": {"country": "CHINA", "aliases": ("NINGXIA HUI", "NINGXIA HUI AUTONOMOUS REGION", "YINCHUAN", "宁夏", "宁夏回族自治区", "寧夏", "寧夏回族自治區", "银川", "銀川")},
+	"XINJIANG": {"country": "CHINA", "aliases": ("XINJIANG UYGUR", "XINJIANG UYGHUR", "XINJIANG UYGUR AUTONOMOUS REGION", "URUMQI", "新疆", "新疆维吾尔自治区", "新疆維吾爾自治區", "乌鲁木齐", "烏魯木齊")},
+	"HONG_KONG": {"country": "CHINA", "aliases": ("HONG KONG", "HONGKONG", "HK", "HKG", "HONG KONG SAR", "香港", "香港特别行政区", "香港特別行政區")},
+	"MACAO": {"country": "CHINA", "aliases": ("MACAO", "MACAU", "MO", "MAC", "MACAO SAR", "澳门", "澳門", "澳门特别行政区", "澳門特別行政區")},
+	# Đài Loan: 22 thành phố/huyện cấp cao nhất.
+	"TAIPEI": {"country": "TAIWAN", "aliases": ("TAIPEI CITY", "TAIPEH", "台北", "臺北", "台北市", "臺北市")},
+	"NEW_TAIPEI": {"country": "TAIWAN", "aliases": ("NEW TAIPEI", "NEW TAIPEI CITY", "NEWTAIPEI", "XINBEI", "新北", "新北市")},
+	"TAOYUAN": {"country": "TAIWAN", "aliases": ("TAOYUAN CITY", "桃園", "桃園市")},
+	"TAICHUNG": {"country": "TAIWAN", "aliases": ("TAICHUNG CITY", "台中", "臺中", "台中市", "臺中市")},
+	"TAINAN": {"country": "TAIWAN", "aliases": ("TAINAN CITY", "台南", "臺南", "台南市", "臺南市")},
+	"KAOHSIUNG": {"country": "TAIWAN", "aliases": ("KAOHSIUNG CITY", "GAOXIONG", "高雄", "高雄市")},
+	"KEELUNG": {"country": "TAIWAN", "aliases": ("KEELUNG CITY", "CHILUNG", "基隆", "基隆市")},
+	"HSINCHU_CITY": {"country": "TAIWAN", "aliases": ("HSINCHU", "HSINCHU CITY", "XINZHU CITY", "新竹市")},
+	"CHIAYI_CITY": {"country": "TAIWAN", "aliases": ("CHIAYI", "CHIAYI CITY", "JIAYI CITY", "嘉義市")},
+	"HSINCHU_COUNTY": {"country": "TAIWAN", "aliases": ("HSINCHU COUNTY", "XINZHU COUNTY", "新竹縣")},
+	"MIAOLI": {"country": "TAIWAN", "aliases": ("MIAOLI COUNTY", "苗栗", "苗栗縣")},
+	"CHANGHUA": {"country": "TAIWAN", "aliases": ("CHANGHUA COUNTY", "彰化", "彰化縣")},
+	"NANTOU": {"country": "TAIWAN", "aliases": ("NANTOU COUNTY", "南投", "南投縣")},
+	"YUNLIN": {"country": "TAIWAN", "aliases": ("YUNLIN COUNTY", "雲林", "雲林縣")},
+	"CHIAYI_COUNTY": {"country": "TAIWAN", "aliases": ("CHIAYI COUNTY", "JIAYI COUNTY", "嘉義縣")},
+	"PINGTUNG": {"country": "TAIWAN", "aliases": ("PINGTUNG COUNTY", "屏東", "屏東縣")},
+	"YILAN": {"country": "TAIWAN", "aliases": ("YILAN COUNTY", "ILAN", "宜蘭", "宜蘭縣")},
+	"HUALIEN": {"country": "TAIWAN", "aliases": ("HUALIEN COUNTY", "花蓮", "花蓮縣")},
+	"TAITUNG": {"country": "TAIWAN", "aliases": ("TAITUNG COUNTY", "TAIDONG", "台東", "臺東", "台東縣", "臺東縣")},
+	"PENGHU": {"country": "TAIWAN", "aliases": ("PENGHU COUNTY", "PESCADORES", "澎湖", "澎湖縣")},
+	"KINMEN": {"country": "TAIWAN", "aliases": ("KINMEN COUNTY", "QUEMOY", "JINMEN", "金門", "金門縣")},
+	"LIENCHIANG": {"country": "TAIWAN", "aliases": ("LIENCHIANG COUNTY", "MATSU", "LIANJIANG", "連江", "連江縣")},
+}
+# ============================================================================
+# TÁCH DIRECTIVE VÀ CHUẨN HÓA THAM SỐ ĐIỀU HƯỚNG
+# ----------------------------------------------------------------------------
+# Prompt client gồm block ***...*** chứa cấu hình và phần nội dung OCR phía sau.
+# Nhóm hàm này chấp nhận cả JSON chuẩn lẫn JSON gần đúng từ các client cũ.
+# ============================================================================
 
 def _extract_directive_and_content(user_text: str) -> tuple[str, str]:
 	# Helper đầu vào: API gửi latest_user gồm directive JSON và phần OCR/content.
@@ -215,17 +540,17 @@ def _parse_loose_directive_json(raw: str) -> dict:
 
 
 def _normalize_prompt_type(name: str) -> str:
-	# Dùng alias map để map mọi cách viết về key chuẩn.
+	"""Đưa PromptType từ client về key TRICHXUAT hoặc DOICHIEU."""
 	return PROMPT_TYPE_ALIAS_MAP.get(_norm_key(name), _norm_key(name))
 
 
 def _normalize_formation_id(name: str) -> str:
-	# Đồng nhất các cách nhập "Nguồn hình thành" về key chuẩn trong config.
+	"""Đưa nguồn hình thành hồ sơ về key dùng trong cây COMPARE_RULES."""
 	return FORMATION_ID_ALIAS_MAP.get(_norm_key(name), _norm_key(name))
 
 
 def _normalize_installment(name: str) -> str:
-	# Đồng nhất "Lần thanh toán" về key chuẩn: DEFAULT / LAN_CUOI / LAN_n.
+	"""Đưa lần thanh toán về DEFAULT, LAN_CUOI hoặc LAN_<số>."""
 	n = _norm_key(name)
 	if n in INSTALLMENT_ALIAS_MAP:
 		return INSTALLMENT_ALIAS_MAP[n]
@@ -236,7 +561,7 @@ def _normalize_installment(name: str) -> str:
 
 
 def _normalize_criterion_key(name: str) -> str:
-	# Đồng nhất tên tiêu chí so sánh về key dùng trong COMPARE_RULES.
+	"""Đưa tên tiêu chí hiển thị/alias về key dùng trong COMPARE_RULES."""
 	return CRITERION_ALIAS_MAP.get(_norm_key(name), _norm_key(name))
 
 
@@ -319,10 +644,10 @@ DICHVU_COMPARE_RULES: dict = {
 MAYMOC_COMPARE_RULES: dict = {
 	"DATCOC_TRATRUOC": {
 		"DEFAULT": {
-			"TENNHACUNGCAP": _rule(required_all=["PO", "RINGI"]),
+			"TENNHACUNGCAP": _rule(required_all=["PO"], required_any_groups=[["RINGI"]]),
 			"SOHOADON": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu số hóa đơn."),
 			"NGAYHOADON": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu ngày hóa đơn."),
-			"SOTIEN": _rule(required_all=["PO", "RINGI"]),
+			"SOTIEN": _rule(required_all=["PO", "RINGI", "CONTRACT"]),
 			"LOAITIEN": _rule(required_all=["PO", "RINGI"]),
 			"DIEUKIENGIAOHANG": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu điều kiện giao hàng."),
 			"HANTHANHTOAN": _rule(required_all=["PO"]),
@@ -334,20 +659,20 @@ MAYMOC_COMPARE_RULES: dict = {
 	},
 	"KETHUA_CONGNO": {
 		"DEFAULT": {
-			"TENNHACUNGCAP": _rule(required_all=["PO", "RINGI"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"TENNHACUNGCAP": _rule(required_all=["PO"], required_any_groups=[["RINGI", "INVOICE", "COMMERCIALINVOICE", "CUSTOMSHEET", "BILL"]]),
 			"SOHOADON": _rule(required_all=["CUSTOMSHEET"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
 			"NGAYHOADON": _rule(required_all=["CUSTOMSHEET"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
-			"SOTIEN": _rule(required_all=["PO", "RINGI", "CUSTOMSHEET"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"SOTIEN": _rule(required_all=["PO", "CONTRACT", "RINGI", "CUSTOMSHEET"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
 			"LOAITIEN": _rule(required_all=["PO", "RINGI", "CUSTOMSHEET"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
 			"DIEUKIENGIAOHANG": _rule(required_all=["PO", "CUSTOMSHEET", "COMMERCIALINVOICE"]),
-			"HANTHANHTOAN": _rule(required_all=["PO"], required_any_groups=[["CUSTOMSHEET", "INSPECTION", "HANDOVER"]]),
+			"HANTHANHTOAN": _rule(required_all=["PO"], required_any_groups=[["CUSTOMSHEET", "INSPECTION", "HANDOVER", "BILL"]]),
 			"NGAYHOANTHANHKIEMTRA": _rule(required_all=["CUSTOMSHEET"]),
 			"CHUKICONDAU": _rule(required_all=["PO"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
 			"SORINGI": _rule(required_all=["RINGI"]),
 			"SOPO": _skip("Tiêu chí số PO chỉ áp dụng cho thanh toán sau nghiệm thu."),
 		},
 		"LAN_CUOI": {
-			"TENNHACUNGCAP": _rule(required_all=["PO", "RINGI", "INSPECTION"], required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]]),
+			"TENNHACUNGCAP": _rule(required_all=["PO", "INSPECTION"], required_any_groups=[["INVOICE", "RINGI", "COMMERCIALINVOICE", "BILL"]]),
 			"SOPO": _rule(required_all=["PO", "INSPECTION"]),
 		},
 	},
@@ -374,9 +699,9 @@ XAYDUNG_COMPARE_RULES: dict = {
 	},
 	"KETHUA_CONGNO": {
 		"DEFAULT": {
-			"TENNHACUNGCAP": _rule(required_all=["RINGI", "INVOICE"], required_any_groups=[["INSPECTION"]]),
+			"TENNHACUNGCAP": _rule(required_all=["RINGI", "INVOICE"], required_any_groups=[["INSPECTION", "COMMERCIALINVOICE"]]),
 			"SOHOADON": _rule(required_all=["INVOICE", "CUSTOMSHEET"]),
-			"NGAYHOADON": _rule(required_all=["INVOICE"], required_any_groups=[["CUSTOMSHEET", "INSPECTION"]]),
+			"NGAYHOADON": _rule(required_all=["INVOICE"], required_any_groups=[["CUSTOMSHEET", "INSPECTION", "COMMERCIALINVOICE"]]),
 			"SOTIEN": _rule(required_all=["INVOICE", "CONTRACT", "RINGI"]),
 			"SOTIENTRENTOKHAI": _rule(required_all=["INVOICE", "CUSTOMSHEET"]),
 			"LOAITIEN": _rule(required_all=["INVOICE", "CUSTOMSHEET", "CONTRACT", "RINGI"]),
@@ -516,20 +841,23 @@ def _resolve_compare_rule(prompt_info: dict) -> dict:
 		return {}
 
 	# Lấy rule theo trục: DNTT -> Formation -> Installment -> Criterion
+	# Mặc định Kế thừa phiếu công tác dùng rule như Kế thừa công nợ; nếu sau này
+	# có cấu hình riêng cho KETHUA_PHIEUCONGTAC thì cấu hình riêng vẫn được ưu tiên.
 	dntt_cfg = COMPARE_RULES.get(dntt) or {}
 	formations_to_try = [formation] if formation else list(dntt_cfg.keys())
+	if formation == "KETHUA_PHIEUCONGTAC" and "KETHUA_CONGNO" not in formations_to_try:
+		formations_to_try.append("KETHUA_CONGNO")
 
 	formation_cfg = {}
-	inst_cfg = {}
 	criterion_cfg = {}
 	chosen_formation = ""
 	for formation_key in formations_to_try:
 		candidate_cfg = dntt_cfg.get(formation_key) or {}
-		candidate_inst_cfg = candidate_cfg.get(installment) or candidate_cfg.get("DEFAULT") or {}
-		candidate_criterion_cfg = candidate_inst_cfg.get(criterion) or {}
+		installment_cfg = candidate_cfg.get(installment) or {}
+		default_cfg = candidate_cfg.get("DEFAULT") or {}
+		candidate_criterion_cfg = installment_cfg.get(criterion) or default_cfg.get(criterion) or {}
 		if candidate_criterion_cfg:
 			formation_cfg = candidate_cfg
-			inst_cfg = candidate_inst_cfg
 			criterion_cfg = candidate_criterion_cfg
 			chosen_formation = formation_key
 			break
@@ -572,9 +900,8 @@ def _resolve_compare_rule(prompt_info: dict) -> dict:
 # ============================================================================
 
 def _parse_prompt_directive(directive: str) -> dict:
-	# Directive là block JSON nằm giữa ***...*** trong prompt client.
-	# Parse xong sẽ chuẩn hóa các nhãn tiếng Việt/alias thành key nội bộ ổn định.
-	# Parse directive text -> dict. Nếu lỗi thì trả {} để luồng chính fallback an toàn.
+	"""Đọc directive và trả các tham số điều hướng đã chuẩn hóa cho luồng chính."""
+	# Nếu directive hỏng hoàn toàn, trả dict rỗng để luồng chính fallback an toàn.
 	obj = _parse_loose_directive_json(directive)
 	if not isinstance(obj, dict):
 		return {}
@@ -604,7 +931,7 @@ def _parse_prompt_directive(directive: str) -> dict:
 
 
 def _normalize_criterion_name(name: str) -> str:
-	# Chuẩn hóa tên tiêu chí để so sánh text theo kiểu không dấu.
+	"""Chuẩn hóa tên tiêu chí thành chuỗi IN HOA không dấu để so khớp ổn định."""
 	raw = str(name or "").strip()
 	if not raw:
 		return ""
@@ -670,7 +997,7 @@ def _extract_file_names(text: str) -> list[str]:
 
 
 def _join_file_names(items: list[str]) -> str:
-	# Ghép danh sách file theo kiểu: a, b và c.
+	"""Ghép danh sách tên file thành câu tiếng Việt theo dạng a, b và c."""
 	vals = [str(x or "").strip() for x in items if str(x or "").strip()]
 	if not vals:
 		return ""
@@ -682,7 +1009,7 @@ def _join_file_names(items: list[str]) -> str:
 
 
 def _join_vi_list(items: list[str]) -> str:
-	# Ghép danh sách tiếng Việt theo kiểu: a, b và c.
+	"""Ghép danh sách nhãn thành chuỗi tiếng Việt tự nhiên."""
 	vals = [str(x or "").strip() for x in items if str(x or "").strip()]
 	if not vals:
 		return ""
@@ -694,7 +1021,7 @@ def _join_vi_list(items: list[str]) -> str:
 
 
 def _extract_doc_type_set(text: str) -> set[str]:
-	# Quét text để lấy tập loại chứng từ xuất hiện trong nội dung OCR.
+	"""Quét nhiều kiểu nhãn để lấy tập loại chứng từ xuất hiện trong dữ liệu."""
 	found: set[str] = set()
 	patterns = [
 		r'"SectionType"\s*:\s*"([A-Za-z_]+)"',
@@ -713,12 +1040,12 @@ def _extract_doc_type_set(text: str) -> set[str]:
 
 
 def _doc_type_vi_name(code: str) -> str:
-	# Hiển thị tên tiếng Việt thân thiện cho mã chứng từ.
+	"""Đổi mã SectionType thành tên chứng từ tiếng Việt dùng trong thông báo client."""
 	mapping = {
-		"INVOICE": "Hóa đơn (VAT)",
+		"INVOICE": "Hóa đơn",
 		"COMMERCIALINVOICE": "Hóa đơn thương mại",
 		"CUSTOMSHEET": "Tờ khai hải quan",
-		"PO": "Yêu cầu mua hàng (PO)",
+		"PO": "Yêu cầu mua hàng(PO)",
 		"CONTRACT": "Hợp đồng",
 		"RINGI": "RINGI",
 		"INSPECTION": "Biên bản nghiệm thu",
@@ -727,13 +1054,26 @@ def _doc_type_vi_name(code: str) -> str:
 		"HANDOVER": "Biên bản bàn giao",
 		"MATERIALHANDOVER": "BB bàn giao vật tư, TB về đến công trường",
 		"STATEMENT": "Bảng kê hóa đơn thương mại",
+		"BILL": "Vận đơn",
 	}
 	norm = _normalize_doc_type(code)
 	return mapping.get(norm, norm)
 
 
+def _doc_type_vi_name_sentence(code: str) -> str:
+	"""Tên chứng từ dạng chữ thường để đặt giữa câu mô tả client."""
+	return _doc_type_vi_name(code).lower()
+
+
+def _missing_required_all_empty_input_description(criterion_name: str, doc_types: list[str]) -> str:
+	"""Mô tả thiếu toàn bộ chứng từ required_all khi dữ liệu đầu vào rỗng."""
+	missing_vi = _join_vi_list([_doc_type_vi_name_sentence(x) for x in doc_types])
+	criteria_label = (criterion_name or "tiêu chí đối chiếu").strip()
+	return f"Thiếu các loại chứng từ bắt buộc để đối chiếu {criteria_label} là {missing_vi}"
+
+
 def _missing_any_required_groups(detected_types: set[str], required_any_groups: list[list[str]]) -> list[list[str]]:
-	# Kiểm tra nhóm OR: mỗi nhóm cần có ít nhất 1 chứng từ.
+	"""Trả các nhóm OR chưa có bất kỳ chứng từ hợp lệ nào xuất hiện."""
 	missing_groups: list[list[str]] = []
 	for grp in (required_any_groups or []):
 		norm_grp = [
@@ -749,7 +1089,7 @@ def _missing_any_required_groups(detected_types: set[str], required_any_groups: 
 
 
 def _missing_any_groups_vi_text(missing_groups: list[list[str]]) -> str:
-	# Chuyển nhóm thiếu sang chuỗi mô tả tiếng Việt dễ đọc.
+	"""Chuyển danh sách nhóm OR bị thiếu thành mô tả tiếng Việt cho client."""
 	parts: list[str] = []
 	for grp in (missing_groups or []):
 		labels = [_doc_type_vi_name(x) for x in grp]
@@ -1104,6 +1444,11 @@ def _is_customs_declaration_text(text: str) -> bool:
 	)
 
 
+# ----------------------------------------------------------------------------
+# CHUẨN HÓA SỐ TIỀN
+# Các hàm dưới chỉ sửa định dạng số ở đúng field tiền, không thay đổi nội dung khác.
+# ----------------------------------------------------------------------------
+
 def _normalize_money_number_token(raw_token: str) -> str:
 	"""Chuẩn hóa 1 token số tiền để LLM đối chiếu ổn định hơn.
 
@@ -1159,7 +1504,7 @@ def _normalize_money_number_token(raw_token: str) -> str:
 	if not int_digits:
 		return str(raw_token or "")
 	if not frac_part or set(frac_part) <= {"0"}:
-		return f"{sign}{int_digits}"
+		return f"{sign}{int_digits}.00"
 	return f"{sign}{int_digits}.{frac_part}"
 
 
@@ -1213,6 +1558,11 @@ def _normalize_compare_amount_fields(text: str) -> tuple[str, int]:
 	return normalized, changed_count
 
 
+# ----------------------------------------------------------------------------
+# CHUẨN HÓA NGÀY VÀ LỊCH NGHỈ
+# DueDate được đọc từ dữ liệu đối chiếu rồi lùi về ngày làm việc hợp lệ gần nhất.
+# ----------------------------------------------------------------------------
+
 def _parse_compare_date(value: object) -> datetime | None:
 	"""Đọc ngày đối chiếu theo định dạng nghiệp vụ, ưu tiên dd/mm/yyyy."""
 	text = str(value or "").strip()
@@ -1243,7 +1593,8 @@ def _parse_compare_dates(value: object) -> list[datetime]:
 
 @lru_cache(maxsize=32)
 def _load_holiday_setting_for_year(data_holidays_dir: str, year: int) -> dict:
-	# Đọc cấu hình ngày nghỉ theo năm từ App/Data_Holidays/<year>.json.
+	"""Đọc và cache cấu hình ngày nghỉ của một năm từ thư mục Data_Holidays."""
+	# Dữ liệu được cache để cùng một worker không phải đọc lại file cho từng chứng từ.
 	# Cache theo year để cùng một request/worker không phải đọc file nhiều lần.
 	if not data_holidays_dir or not year:
 		return {}
@@ -1258,10 +1609,11 @@ def _load_holiday_setting_for_year(data_holidays_dir: str, year: int) -> dict:
 		return {}
 
 def clear_holiday_setting_cache() -> None:
-	# Gọi sau khi API /api/data_holidays cập nhật file JSON để rules đọc dữ liệu mới ngay.
+	"""Xóa cache sau khi API ngày nghỉ cập nhật file JSON trên đĩa."""
 	_load_holiday_setting_for_year.cache_clear()
 
 def _holiday_weekly_days_off(setting: dict) -> set[int]:
+	"""Chuyển cấu hình ngày làm việc hằng tuần thành tập chỉ số weekday nghỉ."""
 	# Python weekday(): Monday=0 ... Friday=4, Saturday=5, Sunday=6.
 	# Client gửi IsWorkX=false nghĩa là ngày đó là ngày nghỉ.
 	if not isinstance(setting, dict) or not setting:
@@ -1288,7 +1640,7 @@ def _holiday_weekly_days_off(setting: dict) -> set[int]:
 	return days_off
 
 def _is_public_holiday(date_value: datetime, setting: dict) -> bool:
-	# PublicHolidays hỗ trợ cả ngày đơn và khoảng ngày lễ/tết.
+	"""Kiểm tra một ngày có nằm trong ngày hoặc khoảng ngày lễ đã cấu hình."""
 	detail = setting.get("Detail") if isinstance(setting, dict) else {}
 	holidays = detail.get("PublicHolidays") if isinstance(detail, dict) else []
 	if not isinstance(holidays, list):
@@ -1308,6 +1660,7 @@ def _is_public_holiday(date_value: datetime, setting: dict) -> bool:
 	return False
 
 def _normalize_due_date_by_holidays(due_date: datetime, data_holidays_dir: str | None = None) -> datetime:
+	"""Lùi DueDate về ngày làm việc gần nhất nếu rơi vào ngày nghỉ hoặc ngày lễ."""
 	# Dời DueDate về ngày làm việc gần nhất trước đó nếu rơi vào ngày nghỉ hằng tuần
 	# hoặc ngày/khoảng ngày lễ trong App/Data_Holidays/<year>.json.
 	# Khi lùi qua năm khác, tự đọc cấu hình của năm mới nếu có.
@@ -1325,6 +1678,642 @@ def _normalize_due_date_by_holidays(due_date: datetime, data_holidays_dir: str |
 	return normalized
 
 
+# ============================================================================
+# ĐỐI CHIẾU ĐIỀU KIỆN GIAO HÀNG BẰNG LOGIC PYTHON
+# ----------------------------------------------------------------------------
+# Chuẩn hóa Incoterm, quốc gia và tỉnh/thành; sau đó so sánh toàn bộ cặp chứng từ.
+# Danh mục quốc gia/tỉnh ở đầu file là điểm mở rộng khi phát sinh địa danh mới.
+# ============================================================================
+
+def _normalize_delivery_term_lookup_text(value: object) -> str:
+	"""Chuẩn hóa chuỗi tra cứu địa danh nhưng giữ dấu kết hợp của chữ ngoài Latin."""
+	raw = str(value or "").strip().replace("\u0110", "D").replace("\u0111", "d")
+	folded_characters: list[str] = []
+	previous_base_is_latin = False
+	for character in unicodedata.normalize("NFKD", raw):
+		if unicodedata.combining(character):
+			if not previous_base_is_latin:
+				folded_characters.append(character)
+			continue
+		folded_characters.append(character)
+		previous_base_is_latin = unicodedata.name(character, "").startswith("LATIN ")
+	folded_text = unicodedata.normalize("NFC", "".join(folded_characters))
+	with_normalized_separators = re.sub(r"[-_.()]+", " ", folded_text.upper())
+	return " ".join(with_normalized_separators.split())
+
+
+def _delivery_term_location_key(value: object) -> str:
+	"""Tạo khóa địa danh không phụ thuộc khoảng trắng hoặc ký tự phân cách."""
+	return re.sub(r"\s+", "", _normalize_delivery_term_lookup_text(value))
+
+
+def _delivery_term_incoterm_alias_entries() -> list[tuple[str, str]]:
+	"""Build normalized Incoterm aliases, longest first."""
+	entries: dict[str, str] = {}
+	for code in DELIVERY_TERM_INCOTERM_CODES:
+		entries[_normalize_delivery_term_lookup_text(code)] = code
+		entries[_normalize_delivery_term_lookup_text(" ".join(code))] = code
+	for code, aliases in DELIVERY_TERM_INCOTERM_ALIASES.items():
+		for alias in aliases:
+			entries[_normalize_delivery_term_lookup_text(alias)] = code
+			entries[_delivery_term_location_key(alias)] = code
+	return sorted(entries.items(), key=lambda item: len(item[0]), reverse=True)
+
+
+def _match_delivery_term_incoterm_prefix(text: str) -> tuple[str, str] | None:
+	"""Match an Incoterm code or alias at the start of a delivery term."""
+	for alias, incoterm in _delivery_term_incoterm_alias_entries():
+		if text == alias:
+			return incoterm, ""
+		if text.startswith(alias + " "):
+			return incoterm, text[len(alias):].strip()
+	return None
+
+def _delivery_term_unknown_location_key(value: object) -> str:
+	"""Canonicalize exact aliases for non-geographic delivery locations."""
+	location_key = _delivery_term_location_key(value)
+	for canonical, aliases in DELIVERY_TERM_UNKNOWN_LOCATION_ALIASES.items():
+		alias_keys = {_delivery_term_location_key(alias) for alias in aliases}
+		if location_key in alias_keys:
+			return _delivery_term_location_key(canonical)
+	return location_key
+
+
+def _delivery_term_location_prefix_keys(value: object) -> set[str]:
+	"""Tạo toàn bộ khóa tiền tố theo ranh giới từ để nhận diện phần địa danh chính."""
+	parts = _normalize_delivery_term_lookup_text(value).split()
+	return {
+		_delivery_term_location_key(" ".join(parts[:end_index]))
+		for end_index in range(1, len(parts) + 1)
+	}
+
+def _delivery_term_countries_in_location(value: object) -> set[str]:
+	"""Tìm các quốc gia được ghi rõ trong toàn bộ chuỗi địa danh."""
+	parts = _normalize_delivery_term_lookup_text(value).split()
+	span_keys = {
+		_delivery_term_location_key(" ".join(parts[start_index:end_index]))
+		for start_index in range(len(parts))
+		for end_index in range(start_index + 1, len(parts) + 1)
+	}
+	found_countries: set[str] = set()
+	for country, info in DELIVERY_TERM_COUNTRY_CATALOG.items():
+		aliases = (country, *(info.get("aliases") or ()))
+		if any(_delivery_term_location_key(alias) in span_keys for alias in aliases):
+			found_countries.add(country)
+	return found_countries
+
+def _delivery_term_location_similarity(left: object, right: object) -> float:
+	"""T?nh t? l? gi?ng nhau c?a hai ??a danh b?ng kho?ng c?ch ch?nh s?a k? t?."""
+	left_key = _delivery_term_location_key(left)
+	right_key = _delivery_term_location_key(right)
+	if left_key == right_key:
+		return 1.0
+	if not left_key or not right_key:
+		return 0.0
+
+	previous_row = list(range(len(right_key) + 1))
+	for left_index, left_character in enumerate(left_key, start=1):
+		current_row = [left_index]
+		for right_index, right_character in enumerate(right_key, start=1):
+			current_row.append(min(
+				current_row[-1] + 1,
+				previous_row[right_index] + 1,
+				previous_row[right_index - 1] + (left_character != right_character),
+			))
+		previous_row = current_row
+
+	distance = previous_row[-1]
+	return 1.0 - (distance / max(len(left_key), len(right_key)))
+
+
+def _delivery_term_ocr_aware_similarity(left: object, right: object) -> float:
+	"""So s?nh OCR m? kh?ng thay ??i d? li?u ngu?n; ch? gi?m chi ph? nh?m k? t? ph? bi?n."""
+	left_key = _delivery_term_location_key(left)
+	right_key = _delivery_term_location_key(right)
+	if left_key == right_key:
+		return 1.0
+	if not left_key or not right_key:
+		return 0.0
+
+	confusable_pairs = {frozenset(pair) for pair in (("O", "0"), ("I", "1"), ("I", "L"), ("B", "8"), ("S", "5"))}
+	previous_row = list(range(len(right_key) + 1))
+	for left_index, left_character in enumerate(left_key, start=1):
+		current_row = [left_index]
+		for right_index, right_character in enumerate(right_key, start=1):
+			if left_character == right_character:
+				substitution_cost = 0.0
+			elif frozenset((left_character, right_character)) in confusable_pairs:
+				substitution_cost = 0.25
+			else:
+				substitution_cost = 1.0
+			current_row.append(min(
+				current_row[-1] + 1,
+				previous_row[right_index] + 1,
+				previous_row[right_index - 1] + substitution_cost,
+			))
+		previous_row = current_row
+
+	distance = previous_row[-1]
+	return 1.0 - (distance / max(len(left_key), len(right_key)))
+
+
+def _delivery_term_location_matches(left: object, right: object) -> bool:
+	"""??i chi?u ??a danh m? kh?ng s?a gi? tr? OCR ngu?n."""
+	left_key = _delivery_term_unknown_location_key(left)
+	right_key = _delivery_term_unknown_location_key(right)
+	if left_key == right_key:
+		return True
+	if _delivery_term_location_is_expanded_form(left, right):
+		return True
+	if _delivery_term_location_similarity(left, right) >= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD:
+		return True
+	return _delivery_term_ocr_aware_similarity(left, right) >= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+
+def _delivery_term_location_is_expanded_form(left: object, right: object) -> bool:
+	"""Nhận diện một tên điểm giao hàng là dạng đầy đủ mở rộng của tên còn lại."""
+	left_parts = _normalize_delivery_term_lookup_text(left).split()
+	right_parts = _normalize_delivery_term_lookup_text(right).split()
+	if not left_parts or not right_parts or len(left_parts) == len(right_parts):
+		return False
+
+	shorter_parts, longer_parts = sorted((left_parts, right_parts), key=len)
+	return longer_parts[:len(shorter_parts)] == shorter_parts
+
+def _delivery_term_known_location_keys(value: object) -> set[str]:
+	"""Lấy các khóa alias hợp lệ của quốc gia/tỉnh đã nhận diện để đối chiếu lỗi OCR."""
+	term = value if isinstance(value, dict) else {}
+	country = str(term.get("country") or "")
+	province = str(term.get("province") or "")
+	country_keys: set[str] = set()
+	province_keys: set[str] = set()
+
+	if country:
+		country_info = DELIVERY_TERM_COUNTRY_CATALOG.get(country) or {}
+		country_aliases = (country, *(country_info.get("aliases") or ()))
+		country_keys = {_delivery_term_location_key(alias) for alias in country_aliases}
+	if province:
+		province_info = DELIVERY_TERM_PROVINCE_CATALOG.get(province) or {}
+		province_aliases = (province, *(province_info.get("aliases") or ()))
+		province_keys = {_delivery_term_location_key(alias) for alias in province_aliases}
+
+	child_location_keys: set[str] = set()
+	for info in DELIVERY_TERM_LOCATION_CATALOG.values():
+		if province and str(info.get("province") or "") != province:
+			continue
+		if not province and country and str(info.get("country") or "") != country:
+			continue
+		aliases = info.get("aliases") or ()
+		child_location_keys.update(_delivery_term_location_key(alias) for alias in aliases)
+
+	location_keys = country_keys | province_keys | child_location_keys
+	if country_keys and province_keys:
+		location_keys.update(
+			country_key + province_key
+			for country_key in country_keys
+			for province_key in province_keys
+		)
+		location_keys.update(
+			province_key + country_key
+			for country_key in country_keys
+			for province_key in province_keys
+		)
+	return location_keys
+
+def _delivery_term_known_location_matches_ocr(value: object, ocr_location: object) -> bool:
+	"""Kiểm tra chuỗi OCR có giống ít nhất 80% một alias của địa danh đã nhận diện hay không."""
+	return any(
+		(
+			_delivery_term_location_similarity(location_key, ocr_location)
+			>= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+			or _delivery_term_ocr_aware_similarity(location_key, ocr_location)
+			>= DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD
+		)
+		for location_key in _delivery_term_known_location_keys(value)
+	)
+
+
+def _normalize_delivery_term(value: object) -> dict[str, str] | None:
+	"""Tách điều kiện giao hàng thành Incoterm, quốc gia, tỉnh và địa danh chưa biết."""
+	text = _normalize_delivery_term_lookup_text(value)
+	if not text:
+		return None
+
+	noise_values = {
+		_normalize_delivery_term_lookup_text(item)
+		for item in DELIVERY_TERM_NOISE_CATALOG
+	}
+	if text in noise_values:
+		return None
+
+	incoterm_match = _match_delivery_term_incoterm_prefix(text)
+	if not incoterm_match:
+		return None
+
+	incoterm, location_text = incoterm_match
+	# Phiên bản quy tắc Incoterms chỉ là metadata phía sau, không phải một phần địa danh giao hàng.
+	location_text = re.sub(
+		r"(?:\s*[,;:/-]?\s*)INCOTERMS?\s+(?:19|20)\d{2}\s*$",
+		"",
+		location_text,
+		flags=re.I,
+	).strip(" ,;:/-")
+	result = {"incoterm": incoterm, "country": "", "province": "", "location": ""}
+	if not location_text:
+		return result
+
+	location_key = _delivery_term_location_key(location_text)
+	location_prefix_keys = _delivery_term_location_prefix_keys(location_text)
+	explicit_countries = _delivery_term_countries_in_location(location_text)
+	for province, info in DELIVERY_TERM_PROVINCE_CATALOG.items():
+		aliases = (province, *(info.get("aliases") or ()))
+		if any(_delivery_term_location_key(alias) == location_key for alias in aliases):
+			result["country"] = str(info.get("country") or "")
+			result["province"] = province
+			return result
+
+	for info in DELIVERY_TERM_LOCATION_CATALOG.values():
+		aliases = info.get("aliases") or ()
+		if any(_delivery_term_location_key(alias) == location_key for alias in aliases):
+			if info.get("infer_country"):
+				result["country"] = str(info.get("country") or "")
+			result["location"] = str(info.get("display") or "")
+			return result
+
+	# Quốc gia có thể đứng trước hoặc sau tỉnh/thành. Chỉ ghép khi tỉnh thực sự
+	# thuộc quốc gia đó để không coi nhầm các chuỗi mâu thuẫn như JAPAN HAIPHONG.
+	for country, country_info in DELIVERY_TERM_COUNTRY_CATALOG.items():
+		country_aliases = (country, *(country_info.get("aliases") or ()))
+		country_keys = {_delivery_term_location_key(alias) for alias in country_aliases}
+		for province, province_info in DELIVERY_TERM_PROVINCE_CATALOG.items():
+			if str(province_info.get("country") or "") != country:
+				continue
+			province_aliases = (province, *(province_info.get("aliases") or ()))
+			province_keys = {_delivery_term_location_key(alias) for alias in province_aliases}
+			if any(
+				{country_key + province_key, province_key + country_key} & location_prefix_keys
+				for country_key in country_keys
+				for province_key in province_keys
+			):
+				result["country"] = country
+				result["province"] = province
+				return result
+
+	# Tỉnh/thành hoặc địa danh chính có thể đứng đầu, còn phần sau chỉ là phương thức
+	# vận chuyển, tên pháp nhân hoặc nhiễu OCR. Không bỏ qua quốc gia mâu thuẫn nếu có.
+	for province, info in DELIVERY_TERM_PROVINCE_CATALOG.items():
+		province_country = str(info.get("country") or "")
+		if explicit_countries - {province_country}:
+			continue
+		aliases = (province, *(info.get("aliases") or ()))
+		if any(_delivery_term_location_key(alias) in location_prefix_keys for alias in aliases):
+			result["country"] = province_country
+			result["province"] = province
+			return result
+
+	for info in DELIVERY_TERM_LOCATION_CATALOG.values():
+		location_country = str(info.get("country") or "")
+		if explicit_countries - {location_country}:
+			continue
+		aliases = info.get("aliases") or ()
+		if any(_delivery_term_location_key(alias) in location_prefix_keys for alias in aliases):
+			if info.get("infer_country"):
+				result["country"] = location_country
+			result["location"] = str(info.get("display") or "")
+			return result
+
+	for country, info in DELIVERY_TERM_COUNTRY_CATALOG.items():
+		aliases = (country, *(info.get("aliases") or ()))
+		if any(_delivery_term_location_key(alias) == location_key for alias in aliases):
+			result["country"] = country
+			return result
+
+	result["location"] = location_text
+	return result
+
+
+def _delivery_term_key(value: object) -> tuple[str, str, str, str]:
+	"""Tạo khóa bất biến để đếm tần suất và loại bỏ điều kiện giao hàng trùng."""
+	term = value if isinstance(value, dict) else {}
+	return (
+		str(term.get("incoterm") or ""),
+		str(term.get("country") or ""),
+		str(term.get("province") or ""),
+		_delivery_term_unknown_location_key(term.get("location")),
+	)
+
+def _format_delivery_term(value: object) -> str:
+	"""Ghép điều kiện đã chuẩn hóa thành chuỗi ngắn dùng trong mô tả kết quả."""
+	term = value if isinstance(value, dict) else {}
+	incoterm = str(term.get("incoterm") or "")
+	country = str(term.get("country") or "")
+	province = str(term.get("province") or "")
+	location = str(term.get("location") or "")
+	detail = province.replace("_", " ") if province else location or country
+	return " ".join(part for part in (incoterm, detail) if part)
+
+def _delivery_term_provinces_are_compatible(left_province: object, right_province: object) -> bool:
+	"""Kiểm tra hai tỉnh/thành có được coi là cùng nhóm theo quy ước nghiệp vụ."""
+	left_key = str(left_province or "").strip()
+	right_key = str(right_province or "").strip()
+	if not left_key or not right_key:
+		return False
+	if left_key == right_key:
+		return True
+	return any({left_key, right_key}.issubset(group) for group in DELIVERY_TERM_COMPATIBLE_PROVINCE_GROUPS)
+
+
+def _delivery_term_mismatch(left: object, right: object) -> str:
+	"""Trả lý do không tương thích giữa hai điều kiện, rỗng nếu có thể coi là khớp."""
+	left_term = left if isinstance(left, dict) else {}
+	right_term = right if isinstance(right, dict) else {}
+	left_incoterm, left_country, left_province, left_location = _delivery_term_key(left_term)
+	right_incoterm, right_country, right_province, right_location = _delivery_term_key(right_term)
+	if left_incoterm != right_incoterm:
+		return "incoterm"
+
+	left_is_bare = not any((left_country, left_province, left_location))
+	right_is_bare = not any((right_country, right_province, right_location))
+	if left_is_bare or right_is_bare:
+		return ""
+
+	left_is_known = bool(left_country or left_province)
+	right_is_known = bool(right_country or right_province)
+	if left_is_known != right_is_known:
+		known_value = left if left_is_known else right
+		ocr_location = right_location if left_is_known else left_location
+		return "" if _delivery_term_known_location_matches_ocr(known_value, ocr_location) else "location"
+	if not left_is_known:
+		return "" if _delivery_term_location_matches(left_term.get("location"), right_term.get("location")) else "location"
+
+	if left_country != right_country:
+		return "country"
+	if (
+		left_province
+		and right_province
+		and not _delivery_term_provinces_are_compatible(left_province, right_province)
+	):
+		return "province"
+	if left_location and right_location:
+		similarity = _delivery_term_location_similarity(left_location, right_location)
+		is_expanded_form = _delivery_term_location_is_expanded_form(
+			left_term.get("location"),
+			right_term.get("location"),
+		)
+		if not _delivery_term_location_matches(left_term.get("location"), right_term.get("location")):
+			return "location"
+	return ""
+
+def _delivery_term_specificity(value: object) -> int:
+	"""Chấm độ chi tiết để ưu tiên tỉnh, quốc gia hoặc địa danh hơn Incoterm trần."""
+	_, country, province, location = _delivery_term_key(value)
+	if province:
+		return 3
+	if country:
+		return 2
+	if location:
+		return 1
+	return 0
+
+def _delivery_term_file_names(records: list[dict], limit: int = 10) -> str:
+	"""Lấy tối đa số tên file quy định, bỏ trùng và giữ thứ tự nguồn."""
+	file_names: list[str] = []
+	seen: set[str] = set()
+	for record in sorted(
+		records,
+		key=lambda item: int(
+			item["file_source_index"]
+			if item.get("file_source_index") is not None
+			else item.get("source_index") or 0
+		),
+	):
+		file_name = str(record.get("file_name") or "").strip()
+		if not file_name or file_name in seen:
+			continue
+		seen.add(file_name)
+		file_names.append(file_name)
+		if len(file_names) >= limit:
+			break
+	return ", ".join(file_names)
+
+def _build_delivery_term_result(content_text: str, criterion_name: str) -> dict:
+	"""Đối chiếu điều kiện giao hàng hoàn toàn bằng code và tạo criteria trả client."""
+	criteria_name = str(criterion_name or "").strip() or "Điều kiện giao hàng"
+	documents = _parse_fixed_compare_document_blocks(content_text)
+	grouped_records: dict[str, list[dict]] = {
+		document_type: [] for document_type in DELIVERY_TERM_DOCUMENT_TYPES
+	}
+	for source_index, document in enumerate(documents):
+		document_type = str(document.get("LOAICHUNGTU") or "")
+		if document_type not in grouped_records:
+			continue
+		raw_value = document.get("DIEUKIENGIAOHANG")
+		if raw_value is None:
+			raw_value = document.get("DELIVERYTERM")
+		grouped_records[document_type].append({
+			"source_index": source_index,
+			"file_source_index": source_index,
+			"file_name": str(document.get("FILENAME") or document.get("TENFILE") or "").strip(),
+			"raw_value": str(raw_value or "").strip(),
+			"term": _normalize_delivery_term(raw_value),
+		})
+
+	representatives: list[dict] = []
+	tie_results: list[dict] = []
+	valid_document_types: set[str] = set()
+	for document_type in DELIVERY_TERM_DOCUMENT_TYPES:
+		records = grouped_records[document_type]
+		valid_records = [record for record in records if record["term"] is not None]
+		if not valid_records:
+			continue
+		valid_document_types.add(document_type)
+		counts: dict[tuple[str, str, str, str], int] = {}
+		for record in valid_records:
+			term_key = _delivery_term_key(record["term"])
+			counts[term_key] = counts.get(term_key, 0) + 1
+		max_count = max(counts.values())
+		tied_keys = {term_key for term_key, count in counts.items() if count == max_count}
+
+		first_records: list[dict] = []
+		for record in valid_records:
+			term_key = _delivery_term_key(record["term"])
+			if term_key not in tied_keys or any(
+				_delivery_term_key(item["term"]) == term_key for item in first_records
+			):
+				continue
+			representative_record = dict(record)
+			for candidate_record in valid_records:
+				if (
+					_delivery_term_key(candidate_record["term"]) == term_key
+					and candidate_record["file_name"]
+				):
+					representative_record["file_name"] = candidate_record["file_name"]
+					representative_record["file_source_index"] = candidate_record["source_index"]
+					break
+			first_records.append(representative_record)
+		if len(tied_keys) > 1:
+			tie_is_compatible = all(
+				not _delivery_term_mismatch(left["term"], right["term"])
+				for left_index, left in enumerate(first_records)
+				for right in first_records[left_index + 1:]
+			)
+			if tie_is_compatible:
+				representative_record = min(
+					first_records,
+					key=lambda record: (
+						-_delivery_term_specificity(record["term"]),
+						int(record["source_index"]),
+					),
+				)
+				representatives.append({"document_type": document_type, **representative_record})
+				continue
+			tie_results.append({
+				"document_type": document_type,
+				"representative_records": first_records,
+				"file_records": first_records,
+				"source_index": first_records[0]["source_index"],
+			})
+			continue
+		representatives.append({"document_type": document_type, **first_records[0]})
+
+	if tie_results:
+		tie_result = min(tie_results, key=lambda item: int(item["source_index"]))
+		displays = [
+			_format_delivery_term(record["term"])
+			for record in tie_result["representative_records"]
+		]
+		return {
+			"criteria": {
+				"CriteriaName": criteria_name,
+				"CriteriaStatus": "NG",
+				"FileName": _delivery_term_file_names(tie_result["file_records"]),
+				"Description": (
+					f'{_doc_type_vi_name(tie_result["document_type"])} có nhiều điều kiện giao hàng '
+					"xuất hiện với số lần bằng nhau: "
+					+ _join_vi_list(displays)
+					+ "."
+				),
+			}
+		}
+
+	# Sau khi xử lý tie, kiểm tra TOÀN BỘ DeliveryTerm khác nhau còn lại.
+	# Không dùng majority để che một giá trị xung đột ở bất kỳ loại chứng từ nào.
+	all_distinct_records: list[dict] = []
+	for document_type in DELIVERY_TERM_DOCUMENT_TYPES:
+		valid_records = [record for record in grouped_records[document_type] if record["term"] is not None]
+		for record in valid_records:
+			term_key = _delivery_term_key(record["term"])
+			if any(
+				item["document_type"] == document_type and _delivery_term_key(item["term"]) == term_key
+				for item in all_distinct_records
+			):
+				continue
+			distinct_record = {"document_type": document_type, **record}
+			for candidate_record in valid_records:
+				if _delivery_term_key(candidate_record["term"]) == term_key and candidate_record["file_name"]:
+					distinct_record["file_name"] = candidate_record["file_name"]
+					distinct_record["file_source_index"] = candidate_record["source_index"]
+					break
+			all_distinct_records.append(distinct_record)
+
+	mismatch_priority = {"incoterm": 0, "country": 1, "province": 2, "location": 3}
+	all_mismatches: list[tuple[int, int, int, dict, dict]] = []
+	for left_index, left in enumerate(all_distinct_records):
+		for right in all_distinct_records[left_index + 1:]:
+			mismatch = _delivery_term_mismatch(left["term"], right["term"])
+			if mismatch:
+				all_mismatches.append((mismatch_priority[mismatch], int(left["source_index"]), int(right["source_index"]), left, right))
+	if all_mismatches:
+		_, _, _, left, right = min(all_mismatches, key=lambda item: item[:3])
+		return {
+			"criteria": {
+				"CriteriaName": criteria_name,
+				"CriteriaStatus": "NG",
+				"FileName": _delivery_term_file_names([left, right]),
+				"Description": (
+					"Điều kiện giao hàng không khớp: "
+					f'{_doc_type_vi_name(left["document_type"])} = {_format_delivery_term(left["term"])}; '
+					f'{_doc_type_vi_name(right["document_type"])} = {_format_delivery_term(right["term"])}.'
+				),
+			}
+		}
+
+	if len(representatives) < 2:
+		invalid_or_missing_records: list[dict] = []
+		status_parts: list[str] = []
+		for document_type in DELIVERY_TERM_DOCUMENT_TYPES:
+			records = grouped_records[document_type]
+			if document_type in valid_document_types:
+				status = "hợp lệ"
+			elif not records:
+				status = "không có chứng từ"
+			elif any(record["raw_value"] for record in records):
+				status = "không có điều kiện giao hàng hợp lệ"
+				invalid_or_missing_records.extend(records)
+			else:
+				status = "thiếu điều kiện giao hàng"
+				invalid_or_missing_records.extend(records)
+			status_parts.append(f"{_doc_type_vi_name(document_type)}: {status}")
+		return {
+			"criteria": {
+				"CriteriaName": criteria_name,
+				"CriteriaStatus": "BLANK",
+				"FileName": _delivery_term_file_names(invalid_or_missing_records),
+				"Description": (
+					"Không đủ ít nhất 2 loại chứng từ có điều kiện giao hàng hợp lệ để đối chiếu. "
+					+ "; ".join(status_parts)
+					+ "."
+				),
+			}
+		}
+
+	representatives.sort(key=lambda item: int(item["source_index"]))
+	mismatch_priority = {"incoterm": 0, "country": 1, "province": 2, "location": 3}
+	mismatches: list[tuple[int, int, int, dict, dict]] = []
+	for left_index, left in enumerate(representatives):
+		for right in representatives[left_index + 1:]:
+			mismatch = _delivery_term_mismatch(left["term"], right["term"])
+			if mismatch:
+				mismatches.append((
+					mismatch_priority[mismatch],
+					int(left["source_index"]),
+					int(right["source_index"]),
+					left,
+					right,
+				))
+	if mismatches:
+		_, _, _, left, right = min(mismatches, key=lambda item: item[:3])
+		return {
+			"criteria": {
+				"CriteriaName": criteria_name,
+				"CriteriaStatus": "NG",
+				"FileName": _delivery_term_file_names([left, right]),
+				"Description": (
+					"Điều kiện giao hàng không khớp: "
+					f'{_doc_type_vi_name(left["document_type"])} = '
+					f'{_format_delivery_term(left["term"])}; '
+					f'{_doc_type_vi_name(right["document_type"])} = '
+					f'{_format_delivery_term(right["term"])}.'
+				),
+			}
+		}
+
+	return {
+		"criteria": {
+			"CriteriaName": criteria_name,
+			"CriteriaStatus": "OK",
+			"FileName": "",
+			"Description": "Điều kiện giao hàng đã hoàn toàn khớp với nhau.",
+		}
+	}
+
+
+# ============================================================================
+# TÍNH VÀ ĐỐI CHIẾU HẠN THANH TOÁN
+# ----------------------------------------------------------------------------
+# Nhóm hàm này đọc PaymentTerm/ngày mốc, tính DueDate và chuẩn hóa qua lịch nghỉ.
+# Một số hồ sơ được tính hoàn toàn bằng Python; schema LLM chỉ là nguồn tương thích cũ.
+# ============================================================================
+
 def _parse_fixed_compare_document_blocks(content_text: str) -> list[dict[str, str]]:
 	"""Đọc các block chứng từ cố định dạng { field: value | field: value }."""
 	documents: list[dict[str, str]] = []
@@ -1337,6 +2326,10 @@ def _parse_fixed_compare_document_blocks(content_text: str) -> list[dict[str, st
 			field_key = _norm_key(field_name)
 			if field_key == "NGAYHOAON":
 				field_key = "NGAYHOADON"
+			if field_key == "NGAYHOPONG":
+				field_key = "NGAYHOPDONG"
+			if field_key == "IEUKIENGIAOHANG":
+				field_key = "DIEUKIENGIAOHANG"
 			if field_key:
 				fields[field_key] = field_value.strip()
 
@@ -1391,6 +2384,238 @@ def _parse_payment_anchor_date(value: object) -> datetime | None:
 		)
 	except ValueError:
 		return None
+
+
+def _collect_xaydung_payment_records(
+	documents: list[dict[str, str]],
+	*,
+	document_type: str,
+	date_field: str,
+	subtype_field: str = "",
+	subtype_tokens: tuple[str, ...] = (),
+) -> tuple[list[tuple[datetime, str]], bool]:
+	"""Thu thập ngày/file Xây dựng đúng loại chứng từ và loại biên bản."""
+	records: list[tuple[datetime, str]] = []
+	found_matching_document = False
+	for document in documents:
+		if document.get("LOAICHUNGTU") != document_type:
+			continue
+		if subtype_field:
+			subtype = _norm_key(document.get(subtype_field) or "")
+			if not any(token in subtype for token in subtype_tokens):
+				continue
+		found_matching_document = True
+		anchor_date = _parse_payment_anchor_date(document.get(date_field))
+		if anchor_date is None:
+			continue
+		records.append((anchor_date, str(document.get("TENFILE") or "").strip()))
+	return records, found_matching_document
+
+
+def _build_xaydung_payment_source_from_records(
+	records: list[tuple[datetime, str]],
+	*,
+	found_matching_document: bool,
+	missing_document_description: str,
+	transform_date: Callable[[datetime], datetime] | None = None,
+) -> dict:
+	"""Tạo object DueDate/FileName/Description từ record Xây dựng đã chọn."""
+	if not records:
+		description = (
+			"Không có ngày mốc hợp lệ từ chứng từ bắt buộc."
+			if found_matching_document
+			else missing_document_description
+		)
+		return {"DueDate": None, "FileName": "", "Description": description}
+
+	due_dates: list[datetime] = []
+	file_names: list[str] = []
+	seen_due_dates: set[datetime] = set()
+	seen_file_names: set[str] = set()
+	for anchor_date, file_name in records:
+		due_date = transform_date(anchor_date) if transform_date is not None else anchor_date
+		if due_date in seen_due_dates:
+			continue
+		seen_due_dates.add(due_date)
+		due_dates.append(due_date)
+		if file_name and file_name not in seen_file_names and len(file_names) < 10:
+			seen_file_names.add(file_name)
+			file_names.append(file_name)
+
+	return {
+		"DueDate": ", ".join(due_date.strftime("%d/%m/%Y") for due_date in due_dates),
+		"FileName": ", ".join(file_names),
+		"Description": "",
+	}
+
+
+def _build_xaydung_missing_document_description(
+	formation_key: str,
+	installment_key: str,
+	document_type: str,
+	requirement: str,
+) -> str:
+	"""Mô tả rõ ngữ cảnh và chứng từ Xây dựng đang bị thiếu."""
+	formation_label = str(
+		((FORMATION_ID_CATALOG.get(formation_key) or {}).get("label"))
+		or formation_key
+		or "Không xác định"
+	)
+	installment_label = str(
+		((INSTALLMENT_CATALOG.get(installment_key) or {}).get("label"))
+		or installment_key
+		or "Không xác định"
+	)
+	installment_match = re.fullmatch(r"LAN_([0-9]+)", installment_key)
+	if installment_match and installment_key not in INSTALLMENT_CATALOG:
+		installment_label = f"Lần {installment_match.group(1)}"
+	document_name = _doc_type_vi_name(document_type)
+	return (
+		f"Không có chứng từ phù hợp: Nguồn hình thành = {formation_label}; "
+		f"Lần thanh toán = {installment_label}; yêu cầu {document_name} {requirement}."
+	)
+
+
+def _add_one_year_for_payment_deadline(date_value: datetime) -> datetime:
+	"""Cộng một năm, đưa 29/02 về ngày cuối tháng 02 nếu năm sau không nhuận."""
+	try:
+		return date_value.replace(year=date_value.year + 1)
+	except ValueError:
+		return date_value.replace(year=date_value.year + 1, day=28)
+
+
+def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str) -> dict:
+	"""Tính DueDate Xây dựng từ FormationID, Installment và các block chứng từ."""
+	formation_key = _normalize_formation_id(prompt_info.get("FormationID") or "")
+	installment_key = _normalize_installment(prompt_info.get("Installment") or "")
+	documents = _parse_fixed_compare_document_blocks(content_text)
+
+	if formation_key == "DATCOC_TRATRUOC":
+		missing_description = _build_xaydung_missing_document_description(
+			formation_key,
+			installment_key,
+			"CONTRACT",
+			"có Ngày hợp đồng",
+		)
+		records, found = _collect_xaydung_payment_records(
+			documents,
+			document_type="CONTRACT",
+			date_field="NGAYHOPDONG",
+		)
+		return _build_xaydung_payment_source_from_records(
+			records,
+			found_matching_document=found,
+			missing_document_description=missing_description,
+		)
+
+	if formation_key != "KETHUA_CONGNO":
+		return {
+			"DueDate": None,
+			"FileName": "",
+			"Description": "Không xác định được Nguồn hình thành.",
+		}
+
+	if installment_key in {"LAN_1", "LAN_2"}:
+		missing_description = _build_xaydung_missing_document_description(
+			formation_key,
+			installment_key,
+			"HANDOVER",
+			'có Loại biên bản bàn giao vật tư hoặc biên bản bàn giao',
+		)
+		records, found = _collect_xaydung_payment_records(
+			documents,
+			document_type="HANDOVER",
+			date_field="NGAYBIENBANBANGIAO",
+			subtype_field="LOAIBIENBANBANGIAO",
+			subtype_tokens=("BANGIAOVATTU","BANGIAO"),
+		)
+		return _build_xaydung_payment_source_from_records(
+			records,
+			found_matching_document=found,
+			missing_document_description=missing_description,
+		)
+
+	if installment_key == "TRUOC_LAN_CUOI":
+		missing_description = _build_xaydung_missing_document_description(
+			formation_key,
+			installment_key,
+			"INSPECTION",
+			'có Loại biên bản nghiệm thu hệ thống',
+		)
+		records, found = _collect_xaydung_payment_records(
+			documents,
+			document_type="INSPECTION",
+			date_field="NGAYBIENBANNGHIEMTHU",
+			subtype_field="LOAIBIENBANNGHIEMTHU",
+			subtype_tokens=("NGHIEMTHUHETHONG",),
+		)
+		return _build_xaydung_payment_source_from_records(
+			records,
+			found_matching_document=found,
+			missing_document_description=missing_description,
+		)
+
+	if installment_key == "LAN_CUOI":
+		missing_description = _build_xaydung_missing_document_description(
+			formation_key,
+			installment_key,
+			"INSPECTION",
+			'thuộc loại "biên bản nghiệm thu sau một năm" hoặc "biên bản nghiệm thu hệ thống"',
+		)
+		one_year_records, found_one_year = _collect_xaydung_payment_records(
+			documents,
+			document_type="INSPECTION",
+			date_field="NGAYBIENBANNGHIEMTHU",
+			subtype_field="LOAIBIENBANNGHIEMTHU",
+			subtype_tokens=("NGHIEMTHUSAUMOTNAM", "NGHIEMTHUSAU1NAM"),
+		)
+		if one_year_records:
+			return _build_xaydung_payment_source_from_records(
+				one_year_records,
+				found_matching_document=True,
+				missing_document_description=missing_description,
+			)
+
+		system_records, found_system = _collect_xaydung_payment_records(
+			documents,
+			document_type="INSPECTION",
+			date_field="NGAYBIENBANNGHIEMTHU",
+			subtype_field="LOAIBIENBANNGHIEMTHU",
+			subtype_tokens=("NGHIEMTHUHETHONG",),
+		)
+		return _build_xaydung_payment_source_from_records(
+			system_records,
+			found_matching_document=found_one_year or found_system,
+			missing_document_description=missing_description,
+			transform_date=_add_one_year_for_payment_deadline,
+		)
+
+	installment_match = re.fullmatch(r"LAN_([0-9]+)", installment_key)
+	if installment_match and int(installment_match.group(1)) >= 3:
+		missing_description = _build_xaydung_missing_document_description(
+			formation_key,
+			installment_key,
+			"INSPECTION",
+			'có Loại biên bản nghiệm thu hiện trường',
+		)
+		records, found = _collect_xaydung_payment_records(
+			documents,
+			document_type="INSPECTION",
+			date_field="NGAYBIENBANNGHIEMTHU",
+			subtype_field="LOAIBIENBANNGHIEMTHU",
+			subtype_tokens=("NGHIEMTHUHIENTRUONG",),
+		)
+		return _build_xaydung_payment_source_from_records(
+			records,
+			found_matching_document=found,
+			missing_document_description=missing_description,
+		)
+
+	return {
+		"DueDate": None,
+		"FileName": "",
+		"Description": "Không xác định được quy tắc theo Lần thanh toán.",
+	}
 
 
 def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
@@ -1473,17 +2698,19 @@ def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 
 
 def _payment_llm_source_obj(parsed_llm: dict | None) -> dict:
+	"""Lấy object nguồn root-level của tiêu chí Hạn thanh toán từ kết quả LLM."""
 	# Riêng tiêu chí Hạn thanh toán, LLM trả schema root-level:
 	# {"DueDate": ..., "FileName": ..., "Description": ...}
 	# Vì vậy không đọc trong key "criteria" để tránh nhầm với schema output cuối cùng trả client.
 	return parsed_llm if isinstance(parsed_llm, dict) else {}
 
 def _extract_payment_due_date_ai(parsed_llm: dict | None) -> object:
-	# Lấy DueDate nguyên bản do LLM trả về trước khi chuẩn hóa ngày nghỉ.
+	"""Lấy DueDate nguyên bản trước khi chuẩn hóa ngày nghỉ và so với Deadline."""
 	source_obj = _payment_llm_source_obj(parsed_llm)
 	return source_obj.get("DueDate", "")
 
 def _build_payment_deadline_log_payload(result: dict, parsed_llm: dict | None) -> dict:
+	"""Thêm DueDate gốc vào bản ghi debug nhưng không làm thay đổi response client."""
 	# Payload này chỉ dùng để ghi Outputs/llms/respond_AI.txt.
 	# Không trả DueDate_AI_log về client; trường này chỉ lưu giá trị LLM trước chuẩn hóa.
 	due_date_ai = _extract_payment_due_date_ai(parsed_llm)
@@ -1567,19 +2794,24 @@ def _build_payment_deadline_result(
 			}
 		}
 
-	failed_description = "Ngày hạn thanh toán trên ĐNTT sớm hơn ngày hạn thanh toán chuẩn được tính: "
-	if len(normalized_due_dates) > 1:
-		failed_due_date_text = ", ".join(
+	deadline_text = deadline.strftime("%d/%m/%Y") if deadline is not None else str(prompt_info.get("Deadline") or "").strip()
+	failed_description = f"Ngày hạn thanh toán trên ĐNTT là {deadline_text} sớm hơn ngày hạn thanh toán chuẩn được tính: "
+	failed_due_date_text = ", ".join(
+		due_date.strftime("%d/%m/%Y")
+		for due_date in failed_due_dates
+	)
+	failed_date_label = (
+		"ngày không thỏa điều kiện"
+		if len(normalized_due_dates) == 1
+		else "các ngày không thỏa điều kiện"
+	)
+	failed_description += f"{failed_due_date_text} ({failed_date_label})."
+	if passed_due_dates:
+		passed_due_date_text = ", ".join(
 			due_date.strftime("%d/%m/%Y")
-			for due_date in failed_due_dates
+			for due_date in passed_due_dates
 		)
-		failed_description += f"{failed_due_date_text} (các ngày hạn thanh toán không thỏa điều kiện)."
-		if passed_due_dates:
-			passed_due_date_text = ", ".join(
-				due_date.strftime("%d/%m/%Y")
-				for due_date in passed_due_dates
-			)
-			failed_description += f" => Ngày hợp lệ: {passed_due_date_text}."
+		failed_description += f" => Ngày hợp lệ là: {passed_due_date_text}."
 
 	return {
 		"criteria": {
@@ -1635,7 +2867,7 @@ def _extract_sections_from_text(raw_text: str) -> list:
 
 
 def _normalize_sections_master_first(sections: list) -> list:
-	# Chuẩn hóa thứ tự key để output ổn định: master -> details -> các key còn lại.
+	"""Sắp key section theo thứ tự master, details rồi các key mở rộng còn lại."""
 	normalized: list = []
 	for section in (sections or []):
 		if not isinstance(section, dict):
@@ -1659,29 +2891,132 @@ def _normalize_sections_master_first(sections: list) -> list:
 
 
 def _normalize_extract_section_type_by_filename(sections: list, file_name: str) -> list:
-	"""Normalize extracted SectionType from the source file-name prefix."""
+	"""Ép và lọc SectionType theo các loại được prefix tên file cho phép."""
 	name_upper = Path(str(file_name or "").strip()).name.upper()
-	if name_upper.startswith(("IN", "IV", "INV")):
-		source_type = "COMMERCIALINVOICE"
-		target_type = "INVOICE"
+	if name_upper.startswith(("IV_PL", "IV-PL", "INV_PL", "IN_PL", "IV.PL")):
+		allowed_types = {"INVOICE", "PACKINGLIST"}
+		type_replacements = {"COMMERCIALINVOICE": "INVOICE"}
+	elif name_upper.startswith("COM_PL"):
+		allowed_types = {"COMMERCIALINVOICE", "PACKINGLIST"}
+		type_replacements = {"INVOICE": "COMMERCIALINVOICE"}
+	elif name_upper.startswith("PL"):
+		allowed_types = {"PACKINGLIST"}
+		type_replacements = {}
+	elif name_upper.startswith("INSPEC_"):
+		allowed_types = {"INSPECTION"}
+		type_replacements = {}
+	elif name_upper.startswith(("IN", "IV", "INV")):
+		allowed_types = {"INVOICE"}
+		type_replacements = {"COMMERCIALINVOICE": "INVOICE"}
 	elif name_upper.startswith("COM"):
-		source_type = "INVOICE"
-		target_type = "COMMERCIALINVOICE"
+		allowed_types = {"COMMERCIALINVOICE"}
+		type_replacements = {"INVOICE": "COMMERCIALINVOICE"}
 	else:
 		return sections
 
+	filtered_sections = []
 	for section in (sections or []):
 		if not isinstance(section, dict):
 			continue
 		master = section.get("master")
 		if not isinstance(master, dict):
 			continue
-		if _normalize_doc_type(master.get("SectionType")) == source_type:
-			master["SectionType"] = target_type
-	return sections
+		section_type = _normalize_doc_type(master.get("SectionType"))
+		section_type = type_replacements.get(section_type, section_type)
+		if section_type not in allowed_types:
+			continue
+		master["SectionType"] = section_type
+		filtered_sections.append(section)
+	return filtered_sections
 
+
+CONTRACT_EXTRACT_FIELDS: tuple[str, ...] = (
+	"ContractNo",
+	"OrderDate",
+	"RingiNo",
+	"SupplierName",
+	"Currency",
+	"DeliveryTerm",
+	"PaymentTerm",
+	"Amount",
+)
+
+def _is_contract_null_value(value: object) -> bool:
+	return value is None or (isinstance(value, str) and not value.strip())
+
+def _is_contract_field_missing(field: str, value: object) -> bool:
+	if _is_contract_null_value(value):
+		return True
+	if field != "Amount":
+		return False
+	try:
+		return float(str(value).strip().replace(",", "")) == 0.0
+	except (TypeError, ValueError):
+		return False
+
+def _merge_contract_sections_first_non_null(sections: list) -> list:
+	contract_sections: list[dict] = []
+	for section in sections or []:
+		if not isinstance(section, dict):
+			continue
+		master = section.get("master")
+		if not isinstance(master, dict):
+			continue
+		if _normalize_doc_type(master.get("SectionType")) == "CONTRACT":
+			contract_sections.append(section)
+
+	if not contract_sections:
+		return []
+
+	master_keys: list[str] = []
+	for section in contract_sections:
+		for key in (section.get("master") or {}):
+			if key not in master_keys:
+				master_keys.append(key)
+
+	merged_master: dict = {}
+	for key in master_keys:
+		merged_master[key] = None
+		for section in contract_sections:
+			value = (section.get("master") or {}).get(key)
+			if not _is_contract_null_value(value):
+				merged_master[key] = value
+				break
+	merged_master["SectionType"] = "CONTRACT"
+
+	merged_detail = {field: None for field in CONTRACT_EXTRACT_FIELDS}
+	for section in contract_sections:
+		details = section.get("details")
+		if not isinstance(details, list):
+			continue
+		for detail in details:
+			if not isinstance(detail, dict):
+				continue
+			for field in CONTRACT_EXTRACT_FIELDS:
+				if _is_contract_field_missing(field, merged_detail[field]):
+					value = detail.get(field)
+					if not _is_contract_field_missing(field, value):
+						merged_detail[field] = value
+			if all(not _is_contract_field_missing(field, merged_detail[field]) for field in CONTRACT_EXTRACT_FIELDS):
+				break
+		if all(not _is_contract_field_missing(field, merged_detail[field]) for field in CONTRACT_EXTRACT_FIELDS):
+			break
+
+	merged_detail["OrderNo"] = "1"
+	return [{"master": merged_master, "details": [merged_detail]}]
+
+def _contract_extract_fields_complete(sections: list) -> bool:
+	merged_contract = _merge_contract_sections_first_non_null(sections)
+	if not merged_contract:
+		return False
+	details = merged_contract[0].get("details") or []
+	if not details or not isinstance(details[0], dict):
+		return False
+	detail = details[0]
+	return all(not _is_contract_field_missing(field, detail.get(field)) for field in CONTRACT_EXTRACT_FIELDS)
 
 def _merge_sections_by_rules(sections: list) -> list:
+	"""Gộp section nhiều chunk theo khóa nghiệp vụ riêng của từng loại chứng từ."""
 	# Gộp output từ nhiều chunk theo SectionType và key nghiệp vụ của từng chứng từ.
 	# Đây là bước chống trùng, bù field thiếu và đánh lại OrderNo trước khi trả API.
 	# Gộp các section theo SectionType và rule chi tiết cho từng loại chứng từ.
@@ -1725,16 +3060,7 @@ def _merge_sections_by_rules(sections: list) -> list:
 		},
 		"CONTRACT": {
 			"key": "ContractNo",
-			"fields": [
-				"ContractNo",
-				"OrderDate",
-				"RingiNo",
-				"SupplierName",
-				"Currency",
-				"DeliveryTerm",
-				"PaymentTerm",
-				"Amount",
-			],
+			"fields": list(CONTRACT_EXTRACT_FIELDS),
 		},
 		"RINGI": {
 			"key": "RingiNo",
@@ -1917,6 +3243,9 @@ def _merge_sections_by_rules(sections: list) -> list:
 	merged_sections: list = []
 	for section_norm in order:
 		items = grouped.get(section_norm) or []
+		if section_norm == "CONTRACT":
+			merged_sections.extend(_merge_contract_sections_first_non_null(items))
+			continue
 		rule = section_rules.get(section_norm) or {}
 		key_field = rule.get("key")
 		allowed_fields = list(rule.get("fields") or [])
@@ -2040,6 +3369,7 @@ def _merge_sections_by_rules(sections: list) -> list:
 # ============================================================================
 
 def _append_sections_result_log(sections_txt_path: Path, response_json_text: str, logger) -> None:
+	"""Ghi kết quả sections cuối cùng để hỗ trợ truy vết khi bật debug text log."""
 	# Ghi log kết quả Trích xuất vào sections.txt để theo dõi/debug.
 	if not ENABLE_AI_LLMS_DEBUG_TEXT_LOGS:
 		return
@@ -2071,6 +3401,7 @@ def _append_empty_sections_error_log(
 	result: dict,
 	logger,
 ) -> None:
+	"""Ghi đầy đủ prompt và output từng chunk khi không parse được section nào."""
 	try:
 		error_txt_path.parent.mkdir(parents=True, exist_ok=True)
 		error_type = (
@@ -2123,6 +3454,7 @@ def _append_case1_prompt_to_normalize(
 	chunk_total: int,
 	logger,
 ) -> None:
+	"""Ghi snapshot prompt của từng chunk trong nhánh Trích xuất."""
 	# Log riêng prompt từng chunk trong nhánh Trích xuất để debug input gửi LLM.
 	# Ghi log prompt từng chunk khi chạy Trích xuất.
 	if not ENABLE_AI_LLMS_DEBUG_TEXT_LOGS:
@@ -2147,6 +3479,133 @@ def _append_case1_prompt_to_normalize(
 			f.write(f"{sep}\n")
 	except Exception as e:
 		logger.warning("Failed to append PromptType=Trích xuất prompt to normalize.txt: %s", repr(e))
+
+
+# ----------------------------------------------------------------------------
+# GIỚI HẠN LOẠI CHỨNG TỪ THEO PREFIX TÊN FILE
+# Prefix kết hợp phải đứng trước prefix đơn để không bị nhận diện thiếu loại.
+# ----------------------------------------------------------------------------
+
+EXTRACT_FILENAME_DOC_TYPE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+	("INV_PL", ("INVOICE", "PACKINGLIST")),
+	("IV_PL", ("INVOICE", "PACKINGLIST")),
+	("IV-PL", ("INVOICE", "PACKINGLIST")),
+	("IN_PL", ("INVOICE", "PACKINGLIST")),
+	("COM_PL", ("COMMERCIALINVOICE", "PACKINGLIST")),
+	("HANDOVER_", ("HANDOVER",)),
+	("INSPEC_", ("INSPECTION",)),
+	("OTHER_", ("OTHER",)),
+	("INV_", ("INVOICE",)),
+	("IV_", ("INVOICE",)),
+	("VAT_", ("INVOICE",)),
+	("CUS_", ("CUSTOMSHEET",)),
+	("TOKHAIHQ7N_QDTQ", ("CUSTOMSHEET",)),
+	("PO_", ("PO",)),
+	("RING_", ("RINGI",)),
+	("RINGI_", ("RINGI",)),
+	("LIST_", ("STATEMENT",)),
+	("COM_", ("COMMERCIALINVOICE",)),
+	("PL_", ("PACKINGLIST",)),
+	("BILL_", ("BILL",)),
+	("CT_", ("CONTRACT",)),
+	("CSC_CT", ("CONTRACT",)),
+)
+
+EXTRACT_UNMAPPED_DOC_TYPE = "UNMAPPED"
+
+EXTRACT_SYSTEM_PROMPT_DOC_TYPES: set[str] = {
+	doc_type
+	for _, doc_types in EXTRACT_FILENAME_DOC_TYPE_RULES
+	for doc_type in doc_types
+}
+EXTRACT_SYSTEM_PROMPT_DOC_TYPES.add(EXTRACT_UNMAPPED_DOC_TYPE)
+
+
+def _resolve_extract_doc_types_by_filename(file_name: str) -> tuple[str, ...]:
+	"""Xác định nhóm DOC từ prefix filename; tên không khớp dùng nhóm UNMAPPED."""
+	name_upper = Path(str(file_name or "").strip()).name.upper()
+	if not name_upper:
+		return ()
+	for prefix, doc_types in EXTRACT_FILENAME_DOC_TYPE_RULES:
+		if name_upper.startswith(prefix):
+			return doc_types
+	return (EXTRACT_UNMAPPED_DOC_TYPE,)
+
+
+def _filter_extract_system_prompt_by_doc_types(
+	system_prompt: str,
+	selected_doc_types: tuple[str, ...],
+) -> tuple[str, dict]:
+	"""Giữ nội dung chung và mọi DOC block thuộc các loại được filename chọn."""
+	source = str(system_prompt or "")
+	selected_types = tuple(
+		doc_type
+		for doc_type in (_normalize_doc_type(value) for value in selected_doc_types)
+		if doc_type
+	)
+	metadata = {
+		"applied": False,
+		"selected_doc_types": list(selected_types),
+		"total_doc_blocks": 0,
+		"kept_doc_blocks": 0,
+		"removed_doc_blocks": 0,
+		"original_system_length": len(source),
+		"filtered_system_length": len(source),
+	}
+
+	open_pattern = re.compile(r"\[\[DOC:([A-Z0-9_]+)\]\]", flags=re.I)
+	close_pattern = re.compile(r"\[\[/DOC\]\]", flags=re.I)
+	block_pattern = re.compile(
+		r"\[\[DOC:([A-Z0-9_]+)\]\](.*?)\[\[/DOC\]\]",
+		flags=re.I | re.S,
+	)
+	open_matches = list(open_pattern.finditer(source))
+	close_matches = list(close_pattern.finditer(source))
+	if not open_matches and not close_matches:
+		return source, metadata
+
+	block_matches = list(block_pattern.finditer(source))
+	if len(open_matches) != len(close_matches) or len(block_matches) != len(open_matches):
+		raise ValueError("Cấu trúc [[DOC:...]] trong system prompt không hợp lệ")
+
+	if not selected_types:
+		raise ValueError("Không xác định được loại chứng từ từ tên file")
+
+	found_types: set[str] = set()
+	for block_match in block_matches:
+		doc_type = _normalize_doc_type(block_match.group(1))
+		if doc_type not in EXTRACT_SYSTEM_PROMPT_DOC_TYPES:
+			raise ValueError(f"Loại DOC không được hỗ trợ trong system prompt: {doc_type}")
+		if open_pattern.search(block_match.group(2)) or close_pattern.search(block_match.group(2)):
+			raise ValueError("Cấu trúc [[DOC:...]] lồng nhau không hợp lệ")
+		found_types.add(doc_type)
+
+	missing_types = [doc_type for doc_type in selected_types if doc_type not in found_types]
+	if missing_types:
+		raise ValueError(
+			"System prompt thiếu DOC block cho loại chứng từ: " + ", ".join(missing_types)
+		)
+
+	selected_type_set = set(selected_types)
+	kept_count = 0
+
+	def _replace_block(match: re.Match) -> str:
+		nonlocal kept_count
+		doc_type = _normalize_doc_type(match.group(1))
+		if doc_type in selected_type_set:
+			kept_count += 1
+			return match.group(2)
+		return ""
+
+	filtered = block_pattern.sub(_replace_block, source)
+	metadata.update({
+		"applied": True,
+		"total_doc_blocks": len(block_matches),
+		"kept_doc_blocks": kept_count,
+		"removed_doc_blocks": len(block_matches) - kept_count,
+		"filtered_system_length": len(filtered),
+	})
+	return filtered, metadata
 
 
 def _extract_ocr_filename_and_text(content: str) -> tuple[str, str]:
@@ -2187,6 +3646,7 @@ def _extract_ocr_filename_and_text(content: str) -> tuple[str, str]:
 
 
 def _append_prompt_process_log(normalize_txt_path: Path, system_prompt: str, user_prompt: str, mode_label: str, logger, extra_lines: list[str] | None = None) -> None:
+	"""Ghi prompt user sau tiền xử lý cho cả nhánh Trích xuất và Đối chiếu."""
 	# Log prompt tổng quát cho cả hai nhánh Trích xuất/Đối chiếu.
 	# extra_lines chứa metadata như chunk index, filename, token trim... khi cần truy vết.
 	# Ghi log prompt đã chuẩn hóa trước khi đưa vào LLM.
@@ -2213,7 +3673,13 @@ def _append_prompt_process_log(normalize_txt_path: Path, system_prompt: str, use
 	except Exception as e:
 		logger.warning("Failed to append prompt_process.txt: %s", repr(e))
 
-# Hàm chính cho endpoint, điều phối luồng xử lý theo rule đã định nghĩa ở trên.
+# ============================================================================
+# LUỒNG ĐIỀU PHỐI CHÍNH CỦA RULES LAYER
+# ----------------------------------------------------------------------------
+# Hàm dưới chọn nhánh Trích xuất/Đối chiếu, áp dụng các nhánh code đặc biệt trước
+# khi gọi LLM và luôn trả cặp (payload, HTTP status) cho endpoint bên ngoài.
+# ============================================================================
+
 def process_ai_llms_models_rules( 
 	*,
 	latest_system: str,
@@ -2234,6 +3700,7 @@ def process_ai_llms_models_rules(
 	light_cuda_cleanup_fn: Callable[[], None],
 	logger,
 	ocr_split_max_chars_per_page: int = 10000,
+	ocr_skip_page_min_chars: int = 20000,
 ) -> tuple[object, int]:
 	"""
 	Điểm vào chính của rules layer cho /api/ai_llms_models.
@@ -2267,13 +3734,33 @@ def process_ai_llms_models_rules(
 	#     DnttType -> FormationID -> Installment -> CriterionName.
 	compare_cfg = _resolve_compare_rule(prompt_info)
 	# 1.6 Chuẩn hóa dữ liệu rule để dùng ở bước kiểm tra chứng từ.
-	list_required = set(compare_cfg.get("required_all") or [])
+	list_required_ordered = list(compare_cfg.get("required_all") or [])
+	list_required = set(list_required_ordered)
 	required_any_groups = compare_cfg.get("required_any_groups") or []
-	list_required_effective = set([x for x in list_required if _normalize_doc_type(x) not in OPTIONAL_COMPARE_DOC_TYPES])
+	list_required_effective_ordered = [
+		x for x in list_required_ordered
+		if _normalize_doc_type(x) not in OPTIONAL_COMPARE_DOC_TYPES
+	]
+	list_required_effective = set(list_required_effective_ordered)
 
 	# 1.7 Cờ điều hướng 2 nhánh chính.
 	is_extract_mode = (prompt_mode == "TRICHXUAT")
 	is_compare_mode = (prompt_mode == "DOICHIEU")
+
+	# Xây dựng + Hạn thanh toán được tính hoàn toàn bằng Python theo
+	# Nguồn hình thành, Lần thanh toán và loại biên bản tương ứng.
+	if is_compare_mode and dntt_prompt_key == "XAYDUNG" and criterion_key == "HANTHANHTOAN":
+		payment_source = _build_xaydung_payment_deadline_source(prompt_info, content_user_process)
+		result = _build_payment_deadline_result(
+			prompt_info=prompt_info,
+			parsed_llm=payment_source,
+			raw_llm_text="",
+			criterion_name=criterion_name,
+			data_holidays_dir=str(data_holidays_dir or ""),
+		)
+		append_response_log_fn(_build_payment_deadline_log_payload(result, payment_source))
+		light_cuda_cleanup_fn()
+		return result, 200
 
 	# Nguyên vật liệu + Hạn thanh toán được tính hoàn toàn bằng Python từ
 	# PaymentTerm của PO và ngày mốc trong các block chứng từ cố định.
@@ -2287,6 +3774,17 @@ def process_ai_llms_models_rules(
 			data_holidays_dir=str(data_holidays_dir or ""),
 		)
 		append_response_log_fn(_build_payment_deadline_log_payload(result, payment_source))
+		light_cuda_cleanup_fn()
+		return result, 200
+
+	if (
+		is_compare_mode
+		and criterion_key == "DIEUKIENGIAOHANG"
+		and compare_cfg
+		and not compare_cfg.get("skip_compare")
+	):
+		result = _build_delivery_term_result(content_user_process, criterion_name)
+		append_response_log_fn(result)
 		light_cuda_cleanup_fn()
 		return result, 200
 
@@ -2361,17 +3859,58 @@ def process_ai_llms_models_rules(
 		if not ocr_content:
 			ocr_content = src_text
 
+		# 2.1.6 Nếu system prompt có DOC blocks, chỉ giữ loại chứng từ được prefix tên file chọn.
+		#       Thực hiện một lần trước khi chia chunk để mọi lần gọi LLM dùng cùng một prompt đã lọc.
+		selected_system_prompt = latest_system
+		selected_doc_types = _resolve_extract_doc_types_by_filename(extract_filename) if extract_filename else ()
+		is_contract_extract = selected_doc_types == ("CONTRACT",)
+		doc_filter_metadata = {
+			"applied": False,
+			"selected_doc_types": [],
+			"total_doc_blocks": 0,
+			"kept_doc_blocks": 0,
+			"removed_doc_blocks": 0,
+			"original_system_length": len(str(latest_system or "")),
+			"filtered_system_length": len(str(latest_system or "")),
+		}
+		system_prompt_upper = str(latest_system or "").upper()
+		has_doc_markers = "[[DOC:" in system_prompt_upper or "[[/DOC]]" in system_prompt_upper
+		if extract_filename and has_doc_markers:
+			try:
+				selected_system_prompt, doc_filter_metadata = _filter_extract_system_prompt_by_doc_types(
+					latest_system,
+					selected_doc_types,
+				)
+			except ValueError as error:
+				return {"detail": str(error)}, 400
+
+		if append_prompt_client_snapshot_fn is not None:
+			try:
+				append_prompt_client_snapshot_fn(
+					[
+						{"role": "system", "content": selected_system_prompt},
+						{"role": "user", "content": src_text},
+					],
+					{
+						"stage": "after_doc_filter_before_ocr_split",
+						"prompt_mode": "TRICHXUAT",
+						"file_name": extract_filename,
+						"doc_filter": dict(doc_filter_metadata),
+					},
+				)
+			except Exception as error:
+				logger.warning("Failed to append processed client prompt snapshot: %s", repr(error))
+
 		# 2.2 Chia OCR thành các chunk để xử lý an toàn theo số trang.
 		is_customs_declaration = _is_customs_declaration_text(ocr_content)
-		effective_ocr_split_max_pages = 1 if is_customs_declaration else int(ocr_split_max_pages)
+		effective_ocr_split_max_pages = 3 if is_customs_declaration else int(ocr_split_max_pages)
 		chunks = split_ocr_text_fn(
 			ocr_content,
 			max_pages=effective_ocr_split_max_pages,
 			overlap_pages_for_oversize=max(0, int(ocr_split_overlap_pages)),
 			max_chars_per_page=max(1, int(ocr_split_max_chars_per_page)),
+			skip_page_min_chars=max(1, int(ocr_skip_page_min_chars)),
 		)
-		if not chunks:
-			chunks = [ocr_content]
 
 		# 2.3 Với mỗi chunk: log prompt -> gọi LLM -> parse sections.
 		merged_sections = []
@@ -2401,12 +3940,12 @@ def process_ai_llms_models_rules(
 				)
 			
 			per_messages = [
-				{"role": "system", "content": latest_system},
+				{"role": "system", "content": selected_system_prompt},
 				{"role": "user", "content": chunk_user_prompt},
 			]
 			_append_case1_prompt_to_normalize(
 				normalize_txt_path=normalize_txt_path,
-				system_prompt=latest_system,
+				system_prompt=selected_system_prompt,
 				user_prompt=chunk_user_prompt,
 				chunk_index=idx,
 				chunk_total=len(chunks),
@@ -2414,7 +3953,7 @@ def process_ai_llms_models_rules(
 			)
 			_append_prompt_process_log(
 				normalize_txt_path=normalize_txt_path,
-				system_prompt=latest_system,
+				system_prompt=selected_system_prompt,
 				user_prompt=chunk_user_prompt,
 				mode_label="PromptType=Trích xuất",
 				logger=logger,
@@ -2423,17 +3962,25 @@ def process_ai_llms_models_rules(
 					f"fileName={extract_filename}",
 					f"ocrSplitMaxPages={effective_ocr_split_max_pages}",
 					f"ocrSplitMaxCharsPerPage={max(1, int(ocr_split_max_chars_per_page))}",
+					f"ocrSkipPageMinChars={max(1, int(ocr_skip_page_min_chars))}",
 					f"isCustomsDeclaration={is_customs_declaration}",
+					f"docPromptFilterApplied={doc_filter_metadata['applied']}",
+					f"docPromptSelectedTypes={','.join(doc_filter_metadata['selected_doc_types'])}",
+					f"docPromptBlocks={doc_filter_metadata['kept_doc_blocks']}/{doc_filter_metadata['total_doc_blocks']}",
+					f"docPromptLength={doc_filter_metadata['filtered_system_length']}/{doc_filter_metadata['original_system_length']}",
 				],
 			)
 
-			final_text = generate_with_trim_fn(
-				base_messages=per_messages,
-				cfg=cfg,
-				special_id=special_id,
-				max_new_tokens=max_new_tokens,
-				temperature=temperature,
-			)
+			generate_kwargs = {
+				"base_messages": per_messages,
+				"cfg": cfg,
+				"special_id": special_id,
+				"max_new_tokens": max_new_tokens,
+				"temperature": temperature,
+			}
+			if "RINGI" in selected_doc_types:
+				generate_kwargs["think"] = True
+			final_text = generate_with_trim_fn(**generate_kwargs)
 			sections = _extract_sections_from_text(final_text)
 			chunk_error_records.append({
 				"ChunkIndex": idx,
@@ -2444,6 +3991,8 @@ def process_ai_llms_models_rules(
 			})
 			if sections:
 				merged_sections.extend(_normalize_sections_master_first(sections))
+				if is_contract_extract and _contract_extract_fields_complete(merged_sections):
+					break
 			else:
 				logger.warning("Chunk %d/%d has no parseable sections", idx, len(chunks))
 
@@ -2456,7 +4005,7 @@ def process_ai_llms_models_rules(
 		if not normalized_sections:
 			_append_empty_sections_error_log(
 				error_txt_path=sections_txt_path.parent / "error.txt",
-				latest_system=latest_system,
+				latest_system=selected_system_prompt,
 				latest_user=latest_user,
 				extract_filename=extract_filename,
 				chunk_records=chunk_error_records,
@@ -2501,7 +4050,7 @@ def process_ai_llms_models_rules(
 					effective_required_any_groups = [["COMMERCIALINVOICE", "INVOICE", "STATEMENT"]]
 				else:
 					effective_required_any_groups = [["COMMERCIALINVOICE", "STATEMENT"]]
-			missing = sorted([x for x in list_required_effective if x not in detected_types])
+			missing = [x for x in list_required_effective_ordered if x not in detected_types]
 			missing_any_groups = _missing_any_required_groups(detected_types, effective_required_any_groups)
 			present_required = sorted([x for x in list_required_effective if x in detected_types])
 			# Check whether any member of the required_any_groups is present
@@ -2516,12 +4065,18 @@ def process_ai_llms_models_rules(
 
 			# 3.3 Chặn sớm: không có chứng từ nào -> NG ngay (không cần gọi LLM).
 			if not detected_types:
+				description = f"Không tồn tại bất kỳ loại chứng từ nào phù hợp để đối chiếu theo tiêu chí {criterion_name}. Cần kiểm tra lại gấp!"
+				if list_required_effective_ordered:
+					description = _missing_required_all_empty_input_description(
+						criterion_name,
+						list_required_effective_ordered,
+					)
 				result = {
 					"criteria": {
 						"CriteriaName": criterion_name,
 						"CriteriaStatus": "NG",
 						"FileName": "",
-						"Description": f"Không tồn tại bất kỳ loại chứng từ nào phù hợp để đối chiếu theo tiêu chí {criterion_name}. Cần kiểm tra lại gấp!",
+						"Description": description,
 					}
 				}
 				append_response_log_fn(result)
@@ -2598,12 +4153,30 @@ def process_ai_llms_models_rules(
 				{"role": "system", "content": latest_system},
 				{"role": "user", "content": compare_user_content},
 			]
+			if append_prompt_client_snapshot_fn is not None:
+				try:
+					append_prompt_client_snapshot_fn(
+						case2_messages,
+						{
+							"stage": "after_compare_filter_before_llm",
+							"prompt_mode": "DOICHIEU",
+							"dntt_type": str(compare_cfg.get("dntt_type") or ""),
+							"formation_id": str(compare_cfg.get("formation_id") or ""),
+							"installment": str(compare_cfg.get("installment") or ""),
+							"criterion_name": criterion_name,
+							"removed_extra_lines": removed_extra_lines,
+							"normalized_amount_fields": normalized_amount_fields,
+						},
+					)
+				except Exception as error:
+					logger.warning("Failed to append processed client prompt snapshot: %s", repr(error))
 			case2_text = generate_with_trim_fn(
 				base_messages=case2_messages,
 				cfg=cfg,
 				special_id=special_id,
 				max_new_tokens=max_new_tokens,
 				temperature=temperature,
+				think=True,
 			)
 
 			parsed_case2 = None

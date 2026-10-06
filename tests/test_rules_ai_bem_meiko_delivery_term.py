@@ -1065,6 +1065,46 @@ class DeliveryTermResultTests(unittest.TestCase):
         self.assertIn("CIF HAI PHONG", criteria["Description"])
         self.assertIn("CIF NOI BAI", criteria["Description"])
 
+class DeliveryTermOCRComparisonTests(unittest.TestCase):
+    def test_spacing_variants_match_without_changing_source_values(self):
+        for left, right in (("HANOI", "HA NOI"), ("NOIBAI", "NOI BAI"), ("HAIPHONG", "HAI PHONG")):
+            with self.subTest(left=left, right=right):
+                self.assertEqual(rules._delivery_term_location_key(left), rules._delivery_term_location_key(right))
+                self.assertTrue(rules._delivery_term_location_matches(left, right))
+
+    def test_ocr_character_variants_match_without_mutating_source(self):
+        cases = (("HANOI", "HAN0I"), ("NOIBAI", "NOL BAI"), ("HAIPHONG", "HA1PHONG"))
+        for expected, ocr_value in cases:
+            with self.subTest(expected=expected, ocr_value=ocr_value):
+                self.assertTrue(rules._delivery_term_location_matches(expected, ocr_value))
+                self.assertNotEqual(expected, ocr_value)
+                self.assertEqual(ocr_value, ocr_value)
+
+    def test_ocr_aware_similarity_does_not_rewrite_values(self):
+        original = "HAN0I"
+        similarity = rules._delivery_term_ocr_aware_similarity("HANOI", original)
+        self.assertGreaterEqual(similarity, rules.DELIVERY_TERM_LOCATION_SIMILARITY_THRESHOLD)
+        self.assertEqual(original, "HAN0I")
+
+    def test_extra_ocr_character_is_tolerated_when_similarity_is_high(self):
+        self.assertTrue(rules._delivery_term_location_matches("HAI PHONG", "HAI PHONGX"))
+
+    def test_different_locations_remain_mismatched(self):
+        for left, right in (("HANOI", "HAIPHONG"), ("NOIBAI", "TANSONNHAT"), ("HAIPHONG", "DANANG")):
+            with self.subTest(left=left, right=right):
+                self.assertFalse(rules._delivery_term_location_matches(left, right))
+
+    def test_delivery_term_result_accepts_common_ocr_location_variants(self):
+        cases = (("CIF HANOI", "CIF HAN0I"), ("CIF NOIBAI", "CIF NOL BAI"), ("CIF HAI PHONG", "CIF HA1PHONG"))
+        for expected, ocr_value in cases:
+            with self.subTest(expected=expected, ocr_value=ocr_value):
+                result = rules._build_delivery_term_result(
+                    _delivery_block("PO", "po.pdf", expected) + "\n" + _delivery_block("INVOICE", "invoice.pdf", ocr_value),
+                    "?i?u ki?n giao h?ng",
+                )
+                self.assertEqual(result["criteria"]["CriteriaStatus"], "OK")
+
+
 class DeliveryTermIntegrationTests(unittest.TestCase):
     criterion_name = "Dieu kien giao hang"
 

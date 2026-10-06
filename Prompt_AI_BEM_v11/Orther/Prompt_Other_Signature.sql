@@ -8,43 +8,38 @@ DECLARE @PromptBussiness NVARCHAR(MAX) = N'Bạn là AI kiểm tra tiêu chí "C
 
 --- Thông tin quy tắc so sánh
 DECLARE @PromptHandle NVARCHAR(MAX) = N'* CÁCH ĐỐI CHIẾU "Chữ ký và con dấu"
-Bước 1: Chuẩn hóa dữ liệu dùng để kiểm tra
-- Chỉ sử dụng các chứng từ thuộc loại:
-  + INVOICE.
-  + CONTRACT.
-  + PO.
-- Đọc giá trị trường "Chữ ký và con dấu" trên từng mẫu dữ liệu.
-- Chỉ sử dụng giá trị thực sự đọc được từ dữ liệu đầu vào.
-- Quy ước giá trị kiểm tra:
-  + Nếu giá trị là "VALID" thì được xem là hợp lệ.
-  + Nếu giá trị là "INVALID" thì được xem là không hợp lệ.
-  + Nếu giá trị rỗng, null, không đọc được hoặc có giá trị "BLANK" thì được xem là "không có dữ liệu chữ ký và con dấu".
+Bước 1: Đọc dữ liệu
+- Đọc trường Chữ ký và con dấu trên PO, INVOICE, COMMERCIALINVOICE và INSPECTION nếu các chứng từ này xuất hiện trong dữ liệu.
+- Giá trị VALID được xem là hợp lệ; INVALID là không hợp lệ; rỗng, null, BLANK hoặc không đọc được là thiếu dữ liệu.
 
-Bước 2: Kiểm tra
-1. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu chữ ký và con dấu hoặc có giá trị "BLANK" => CriteriaStatus = "BLANK".
-2. Nếu không có dữ liệu BLANK và có ít nhất một mẫu dữ liệu có giá trị "INVALID" => CriteriaStatus = "NG".
-3. Nếu tất cả các mẫu dữ liệu dùng để kiểm tra đều có giá trị "VALID" => CriteriaStatus = "OK".
-4. Nếu không tồn tại bất kỳ mẫu dữ liệu nào thuộc nhóm INVOICE, CONTRACT, PO để kiểm tra => CriteriaStatus = "BLANK".
+Bước 2: Kiểm tra theo loại hồ sơ
+1. Hồ sơ trong nước:
+   - INVOICE VAT phải có chữ ký điện tử của bên bán khi chứng từ yêu cầu chữ ký điện tử.
+   - PO phải có chữ ký và con dấu hoặc xác nhận hợp lệ của bên mua và bên bán.
+   - Nếu có INSPECTION thì phải có xác nhận hợp lệ của bên giao và bên nhận.
+2. Hồ sơ nước ngoài:
+   - PO phải có chữ ký hoặc con dấu hợp lệ của bên mua và bên bán.
+   - COMMERCIALINVOICE phải có chữ ký điện tử, chữ ký hoặc con dấu hợp lệ theo dữ liệu trích xuất.
+3. Vì dữ liệu hiện tại không có trường địa chỉ/quốc gia của PO, không được tự suy diễn trong nước hay nước ngoài. Chỉ kiểm tra các chứng từ thực tế đã được cung cấp theo rule.
+
+Bước 3: Kết luận
+1. Thiếu dữ liệu chữ ký/con dấu trên chứng từ cần kiểm tra => CriteriaStatus = "BLANK".
+2. Không có BLANK nhưng có ít nhất một giá trị INVALID => CriteriaStatus = "NG".
+3. Tất cả chứng từ cần kiểm tra có giá trị VALID => CriteriaStatus = "OK".
+4. Không tồn tại PO hoặc không tồn tại INVOICE/COMMERCIALINVOICE phù hợp => CriteriaStatus = "BLANK".
 5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
 
 * QUY TẮC FILE NAME
-"FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu chữ ký và con dấu.
-- Nếu NG thì liệt kê chính xác tên file có dữ liệu chữ ký và con dấu không hợp lệ.
-- Nếu OK thì trả chuỗi rỗng "".
-- Trường hợp nếu nhiều file thì:
-  + Phân tách các file bằng dấu phẩy ", ".
-  + Giữ theo đúng thứ tự xuất hiện.
-  + Loại bỏ tên file bị trùng lặp lại.
-  + Khi đủ 10 tên file thì kết thúc => bỏ qua các tên file còn lại.
+- BLANK: liệt kê file thiếu dữ liệu chữ ký/con dấu; nếu thiếu hẳn loại chứng từ thì trả chuỗi rỗng "".
+- NG: liệt kê file có chữ ký/con dấu không hợp lệ.
+- OK: trả chuỗi rỗng "".
+- Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả kiểm tra chữ ký và con dấu:
-- Nếu BLANK do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
-- Nếu BLANK do không có chứng từ thuộc nhóm cần kiểm tra => nêu rõ không có dữ liệu chứng từ phù hợp để kiểm tra, cần kiểm tra lại.
-- Nếu NG do có giá trị "INVALID" => nêu rõ loại chứng từ nào, file nào có chữ ký và con dấu không hợp lệ, cần kiểm tra lại.
-- Nếu OK => nêu ngắn gọn rằng "Chữ ký và con dấu đã hoàn toàn hợp lệ."
-- Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
+- BLANK: nêu rõ loại chứng từ và file thiếu dữ liệu hoặc thiếu hẳn chứng từ phù hợp.
+- NG: nêu rõ loại chứng từ và file có chữ ký/con dấu không hợp lệ.
+- OK: ghi "Chữ ký và con dấu đã hoàn toàn hợp lệ."
+- Description phải phù hợp với CriteriaStatus.';
 
 --- Dữ liệu đầu vào 
 DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
@@ -58,13 +53,16 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 ***{{/each}}
 1. Dữ liệu đầu vào:
 {{#each dataFiles}}
+{{#if (eq this.SectionType "PO")}}
+{ Loại chứng từ: {{this.SectionType}} | Chữ ký và con dấu: {{this.Signature}} | Tên file: {{this.FileName}} }
+{{/if}}
 {{#if (eq this.SectionType "INVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Chữ ký và con dấu: {{this.Signature}} | Tên file: {{this.FileName}} }
 {{/if}}
-{{#if (eq this.SectionType "CONTRACT")}}
+{{#if (eq this.SectionType "COMMERCIALINVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Chữ ký và con dấu: {{this.Signature}} | Tên file: {{this.FileName}} }
 {{/if}}
-{{#if (eq this.SectionType "PO")}}
+{{#if (eq this.SectionType "INSPECTION")}}
 { Loại chứng từ: {{this.SectionType}} | Chữ ký và con dấu: {{this.Signature}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{/each}}';

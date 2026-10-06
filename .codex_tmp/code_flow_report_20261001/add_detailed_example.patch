@@ -1,0 +1,154 @@
+*** Begin Patch
+*** Update File: .codex_tmp/code_flow_report_20261001/build_source_code_mechanism_report_v4.py
+@@
+ def write_cell(cell, value, size=10.0, bold=False, color="000000"):
+@@
+     run.font.bold = bold
+     run.font.color.rgb = RGBColor.from_string(color)
+ 
+ 
++def write_cell_left(cell, value, size=8.0, bold=False, color="000000"):
++    cell.text = ""
++    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
++    paragraph = cell.paragraphs[0]
++    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
++    paragraph.paragraph_format.space_after = Pt(0)
++    run = paragraph.add_run(value)
++    run.font.name = "Times New Roman"
++    run._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
++    run.font.size = Pt(size)
++    run.font.bold = bold
++    run.font.color.rgb = RGBColor.from_string(color)
++
++
+ def add_text(document, value, size=10.5, bold=False, align=WD_ALIGN_PARAGRAPH.LEFT, color=None, after=3):
+@@
+             write_cell(cell, value, 8.6)
+ 
+ 
++EXAMPLE_FILES = [
++    ("1", "PO_PO-2026-0901.pdf", "PO", "ContractNo/PO No = PO-2026-0901; RingiNo = RG-2026-088; SupplierName = SAKURA MATERIAL CO., LTD.; Currency = JPY; Amount = 3,250,000; PaymentTerm = TT 30 days; DeliveryTerm = CIF HAI PHONG", "BEMT2002 lưu FileName + OCR; BEMT2005 lưu SectionType=PO; BEMT2006 lưu các FieldID tương ứng."),
++    ("2", "RINGI_RG-2026-088.pdf", "RINGI", "RingiNo = RG-2026-088; SupplierName = SAKURA MATERIAL CO., LTD.; Currency = JPY; Amount = 3,250,000; ApprovalLast = đã duyệt", "BEMT2005 SectionType=RINGI; BEMT2006 lưu RingiNo, NCC, số tiền, tiền tệ, người/ngày duyệt."),
++    ("3", "CI_SSK-MV-2026-02-001.pdf", "COMMERCIALINVOICE", "VoucherNo = SSK-MV-2026/02-001; VoucherDate = 05/09/2026; SupplierName = SAKURA MATERIAL CO., LTD.; Currency = JPY; Amount = 1,500,000; DeliveryTerm = CIF HAI PHONG", "BEMT2006 lưu một detail theo VoucherNo."),
++    ("4", "CI_SSK-MV-2026-02-002.pdf", "COMMERCIALINVOICE", "VoucherNo = SSK-MV-2026/02-002; VoucherDate = 06/09/2026; Currency = JPY; Amount = 1,750,000", "BEMT2006 lưu detail invoice thứ hai."),
++    ("5", "TK_107333888810.pdf", "CUSTOMSHEET", "DeclarationNo = 107333888810; VoucherNo = SSK-MV-2026/02-001; DeliveryTerm = CIF; Currency = JPY; Amount = 1,500,000; ClearanceDate = 10/09/2026", "BEMT2006 lưu số tờ khai, invoice liên quan, trị giá, ngày hoàn thành kiểm tra."),
++    ("6", "TK_107333888811.pdf", "CUSTOMSHEET", "DeclarationNo = 107333888811; VoucherNo = SSK-MV-2026/02-002; DeliveryTerm = CIF; Currency = JPY; Amount = 1,750,000; ClearanceDate = 10/09/2026", "BEMT2006 lưu tờ khai thứ hai."),
++    ("7", "VAT_0001234.pdf", "INVOICE", "VoucherNo = 0001234; VoucherDate = 12/09/2026; Currency = VND; Amount = 0 hoặc chỉ dùng khi là hóa đơn VAT nội địa", "Nếu đúng SectionType=INVOICE thì vẫn lưu BEMT2005/BEMT2006; khi đối chiếu NVL nhập khẩu có thể không phải chứng từ chính."),
++    ("8", "PACKINGLIST_SSK-MV-2026-02.pdf", "PACKINGLIST", "Danh sách đóng gói; có thể có VoucherNo liên quan; không phải tiêu chí chính trong 9 prompt NVL hiện tại", "Có thể lưu trích xuất, nhưng prompt đối chiếu NVL thường không bắt buộc dùng."),
++    ("9", "STATEMENT_09-2026.pdf", "STATEMENT", "VoucherNo = SSK-MV-2026/02-001, SSK-MV-2026/02-002; Currency = JPY; Amount = 3,250,000", "Là chứng từ thay thế/đối chiếu thêm trong nhóm Invoice/Statement nếu có."),
++    ("10", "BL_ABC123456.pdf", "BILL", "BillNo = ABC123456; thông tin vận chuyển; không phải tiêu chí chính của NVL hiện tại", "Có thể lưu SectionType=BILL; Rules NVL hiện tại không dùng làm chứng từ bắt buộc."),
++]
++
++
++EXAMPLE_STEPS = [
++    ("1", "WEB ERP9", "BEMF2000Controller.CallAPICompareFileOCRAsync hoặc UpdateResultCompareAI", "Phiếu NVL/09/2026/0011, dòng ĐNTT, 10 file đính kèm", "Tạo CompareFileRequest gồm BEMF2000ViewModel, BEMF2001ViewModels, AttachFiles; POST /CoreAI/FileDataHandler/HandlerFile."),
++    ("2", "API-AI Controller", "FileDataHandlerController.HandlerFileAsync", "CompareFileRequest từ ERP9", "Gọi ReadFileOrchestratorService.HandleAsync."),
++    ("3", "API-AI Orchestrator", "ReadFileOrchestratorService.HandleAsync", "Thông tin phiếu, file, prompt đối chiếu NVL", "Tạo BEMT2003: APK_BEMT2000 = phiếu, StatusProcess = PROCESSING; đưa ReadFileJob vào ChannelJobQueue."),
++    ("4", "API-AI Queue", "ChannelJobQueue → ReadFileWorker → ReadFileBackgroundWorkflow", "ReadFileJob của lượt chạy BEMT2003", "Worker lấy job nền và bắt đầu OCR → trích xuất → đối chiếu."),
++    ("5", "AI Python OCR", "OcrService.ReadAsync gọi http://192.168.0.134:4444/ocr", "10 file chứng từ", "OCR trả TextMerged và Results. API-AI tạo 10 dòng BEMT2002 với DataSourceType=OCR, FileName, AttachID, RawContent = text OCR."),
++    ("6", "AI Python LLM trích xuất", "FormatOCRText → SendPromptWithSumaryResultAsync → /api/ai_llms_models", "Từng file: FileName + text OCR + Prompt_ReadFile", "AI trả JSON sections. ProcessInfomationFileAsync lưu BEMT2005/BEMT2006: BEMT2005.SectionType = PO/RINGI/CUSTOMSHEET...; BEMT2006.FieldID01...FieldID100 = dữ liệu cột đã trích xuất."),
++    ("7", "API-AI chuẩn bị dữ liệu đối chiếu", "BuildAiSectionComparesAsync", "Các dictionary từ BEMT2005/BEMT2006 + OCR", "Tạo dataFiles gồm tất cả chứng từ đã trích xuất; sắp xếp theo SectionType để truyền vào prompt đối chiếu."),
++    ("8", "AI Python Rules/LLM đối chiếu", "BuildCriteriaListAsync → CompareAsync → /api/ai_llms_models", "details ĐNTT + dataFiles + 9 prompt NVL", "Gọi lần lượt các prompt: Số tiền, NCC, Số hóa đơn, Ngày hóa đơn, Loại tiền, Điều kiện giao hàng, Deadline, Ngày hoàn thành kiểm tra, Chữ ký/con dấu."),
++    ("9", "AI Python Rules Engine", "Rules_AI_BEM_MEIKO.py", "DnttType=Nguyên vật liệu; FormationID; Installment; CriterionName", "Resolve rule NVL. Ví dụ Số tiền cần CUSTOMSHEET + RINGI + một trong INVOICE/COMMERCIALINVOICE/STATEMENT; lọc đúng chứng từ rồi trả CriteriaStatus, FileName, Description."),
++    ("10", "Database kết quả", "ParseCriteriaResult + SaveData + UpdateCompareResult", "JSON tiêu chí AI trả về", "Lưu BEMT2004 từng tiêu chí; lưu thêm BEMT2002 DataSourceType=CriteriaSynthesis; cập nhật BEMT2003 Status, Percentage, TextConditionFail, StatusProcess=COMPLETED/FAILED."),
++]
++
++
++def example_section_markdown():
++    files_rows = "\n".join(
++        f"| {no} | `{file}` | `{section}` | {extract} | {storage} |"
++        for no, file, section, extract, storage in EXAMPLE_FILES
++    )
++    step_rows = "\n".join(
++        f"| {no} | {area} | `{code}` | {input_data} | {output_data} |"
++        for no, area, code, input_data, output_data in EXAMPLE_STEPS
++    )
++    return f"""
++
++## 4. Ví dụ mẫu: một phiếu NVL có 10 file chứng từ
++
++Ví dụ minh họa theo cấu trúc code và DB hiện tại: phiếu `NVL/09/2026/0011` có tổng tiền yêu cầu `3,250,000 JPY`, nhà cung cấp `SAKURA MATERIAL CO., LTD.`, Ringi `RG-2026-088`, PO `PO-2026-0901`, gồm 10 file đính kèm.
++
++### 4.1. Mười file đi qua OCR và trích xuất như thế nào
++
++| STT | File | SectionType AI nhận diện | Dữ liệu chính sau trích xuất | DB lưu ở đâu |
++|---|---|---|---|---|
++{files_rows}
++
++### 4.2. Luồng chi tiết từ đầu đến cuối
++
++| Bước | Khu vực | Code/API chính | Dữ liệu vào | Dữ liệu ra và nơi lưu |
++|---|---|---|---|---|
++{step_rows}
++
++### 4.3. Cách AI dùng dữ liệu đã trích xuất để đối chiếu
++
++- `Prompt_ReadFile` chỉ làm nhiệm vụ đọc OCR và trả JSON `sections`: `master.SectionType`, `SectionTitle`, `TotalAmount`, `TotalCurrency`, `Signature`, và `details[]`.
++- API-AI chuyển `sections` thành `BEMT2005` và `BEMT2006`. `BEMT2005` giữ loại chứng từ; `BEMT2006` giữ từng dòng dữ liệu đã trích xuất qua `FieldID01...FieldID100`.
++- Khi đối chiếu, API-AI truyền vào prompt đối chiếu các nhóm dữ liệu chính: `details` của phiếu ĐNTT và `dataFiles` là dữ liệu đã trích xuất từ chứng từ.
++- Với bộ Nguyên vật liệu, `Rules_AI_BEM_MEIKO.py` kiểm tra rule theo `DnttType / FormationID / Installment / CriterionName` để biết tiêu chí đó cần chứng từ nào.
++- Ví dụ tiêu chí `Số tiền`: rule NVL yêu cầu có `CUSTOMSHEET`, `RINGI` và một trong `INVOICE / COMMERCIALINVOICE / STATEMENT`. AI lấy 2 tờ khai + 2 commercial invoice + Ringi + Statement để so tổng `1,500,000 + 1,750,000 = 3,250,000 JPY`, khớp với ĐNTT và Ringi thì lưu `BEMT2004.CriteriaStatus = OK`.
++- Nếu một tiêu chí NG, `BEMT2004.FileName` lưu file liên quan đến lỗi và `Description` lưu lý do; `BEMT2003.Percentage` giảm theo số tiêu chí NG.
++"""
++
++
++def add_example_table(document, title, headers, rows, font_size=7.2):
++    add_text(document, title, 10.5, True, WD_ALIGN_PARAGRAPH.LEFT, "17365D", 2)
++    table = document.add_table(rows=1, cols=len(headers))
++    table.alignment = WD_TABLE_ALIGNMENT.CENTER
++    table.style = "Table Grid"
++    for cell, value in zip(table.rows[0].cells, headers):
++        set_cell_shading(cell, "17365D")
++        write_cell_left(cell, value, 8.0, True, "FFFFFF")
++    for row_index, row in enumerate(rows):
++        cells = table.add_row().cells
++        for cell, value in zip(cells, row):
++            set_cell_shading(cell, "F3F7FC" if row_index % 2 == 0 else "FFFFFF")
++            write_cell_left(cell, value, font_size)
++
++
++def add_example_section(document):
++    document.add_page_break()
++    heading(document, "4. Ví dụ mẫu: một phiếu NVL có 10 file chứng từ")
++    add_text(
++        document,
++        "Ví dụ minh họa theo cấu trúc code và DB hiện tại: phiếu NVL/09/2026/0011 có tổng tiền yêu cầu 3,250,000 JPY, nhà cung cấp SAKURA MATERIAL CO., LTD., Ringi RG-2026-088, PO PO-2026-0901 và 10 file đính kèm.",
++        9.2,
++        False,
++        WD_ALIGN_PARAGRAPH.LEFT,
++        "333333",
++        3,
++    )
++    add_example_table(
++        document,
++        "4.1. Mười file đi qua OCR và trích xuất",
++        ["STT", "File", "SectionType", "Dữ liệu chính sau trích xuất", "DB lưu ở đâu"],
++        EXAMPLE_FILES,
++        6.5,
++    )
++    document.add_page_break()
++    heading(document, "4.2. Luồng chi tiết từ đầu đến cuối")
++    add_example_table(
++        document,
++        "Một lượt chạy đi qua WEB ERP9, API-AI, AI Python và DB như sau",
++        ["Bước", "Khu vực", "Code/API chính", "Dữ liệu vào", "Dữ liệu ra và nơi lưu"],
++        EXAMPLE_STEPS,
++        6.4,
++    )
++    add_text(document, "Cách đọc nhanh: BEMT2002 cho biết OCR đọc được gì; BEMT2005/BEMT2006 cho biết LLM trích xuất được gì; BEMT2004 cho biết từng tiêu chí OK/NG; BEMT2003 cho biết kết quả tổng của lượt chạy.", 8.5, True, WD_ALIGN_PARAGRAPH.LEFT, "17365D", 0)
++
++
+ def markdown_content():
+@@
+-**Cách đọc nhanh:** `BEMT2002.FileName` là tên file OCR; `BEMT2005.SectionType/SectionTitle` là loại hoặc nhóm chứng từ; `BEMT2006.FieldID01...FieldID100` là dữ liệu các cột đã trích xuất; `BEMT2004.CriteriaStatus/Description` là kết quả đối chiếu.
+-"""
++**Cách đọc nhanh:** `BEMT2002.FileName` là tên file OCR; `BEMT2005.SectionType/SectionTitle` là loại hoặc nhóm chứng từ; `BEMT2006.FieldID01...FieldID100` là dữ liệu các cột đã trích xuất; `BEMT2004.CriteriaStatus/Description` là kết quả đối chiếu.
++""" + example_section_markdown()
+@@
+     document.add_page_break()
+     heading(document, "3. Database lưu dữ liệu theo từng lượt chạy")
+     picture(document, images[2], "Hình 3. Field chính lưu tên file, loại chứng từ, dữ liệu trích xuất và kết quả đối chiếu")
+     add_text(document, "Lưu ý: BEMT2003 là điểm neo của một lần chạy. Khi chạy lại, hệ thống tạo lượt chạy mới để lưu dữ liệu và kết quả của lần đó.", 9.5, False, WD_ALIGN_PARAGRAPH.LEFT, "555555", 0)
++    add_example_section(document)
+     document.save(DOCX_PATH)
+*** End Patch

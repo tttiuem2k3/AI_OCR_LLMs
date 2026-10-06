@@ -44,15 +44,17 @@ def _mock_delay_seconds() -> float:
             return max(0.0, float(raw))
         except Exception:
             pass
-    return random.uniform(1.0, 2.0)
+    return random.uniform(2.0, 8.0)
 
 
 def _ocr_mock_delay_seconds() -> float:
-    raw = os.getenv("TEST_OCR_MOCK_DELAY_SECONDS", os.getenv("TEST_MOCK_DELAY_SECONDS", "1")).strip()
+    raw = os.getenv("TEST_OCR_MOCK_DELAY_SECONDS", os.getenv("TEST_MOCK_DELAY_SECONDS", "")).strip()
+    if not raw:
+        return random.uniform(2.0, 8.0)
     try:
         return max(0.0, float(raw))
     except Exception:
-        return 1.0
+        return random.uniform(2.0, 8.0)
 
 
 _load_dotenv(".env")
@@ -588,15 +590,15 @@ def _extract_latest_prompts(messages: list) -> Tuple[str, str]:
     return latest_user, latest_system
 
 
-def _is_extract_prompt(*texts: str) -> bool:
-    combined = "\n".join(str(text or "") for text in texts)
-    no_marks = unicodedata.normalize("NFD", combined)
+def _is_extract_prompt(user_prompt: str) -> bool:
+    match = re.search(r'"PromptType"\s*:\s*"([^"]*)"', str(user_prompt or ""), flags=re.IGNORECASE)
+    if not match:
+        return False
+
+    no_marks = unicodedata.normalize("NFD", match.group(1))
     no_marks = "".join(ch for ch in no_marks if unicodedata.category(ch) != "Mn").lower()
     compact = "".join(ch for ch in no_marks if ch.isalnum())
-
-    has_prompt_type = "prompttype" in compact
-    has_extract_value = "trichxuat" in compact or "trich xuat" in no_marks
-    return has_prompt_type and has_extract_value
+    return compact == "trichxuat"
 
 
 def _llms_require_token(flask_request):
@@ -841,7 +843,7 @@ def ai_llms_models_receive_only():
     logger.info("[%s] LLM mock processing delay %.2fs", _request_seq_label(), delay)
     time.sleep(delay)
 
-    if _is_extract_prompt(latest_system, latest_user):
+    if _is_extract_prompt(latest_user):
         response_payload = _mock_extract_payload(latest_system, latest_user)
         mock_mode = "PromptType=Trích xuất"
         _append_mock_sections_log(response_payload)
@@ -1029,7 +1031,7 @@ def main() -> None:
     print("Routes: GET /ping, POST /ocr, POST /api/ai_llms_models, POST /llms/api/ai_llms_models, POST /api/data_holidays, POST /api/train/run")
     print(r"Logs: Logs\app.log, Outputs\llms\prompt_client.txt, Outputs\llms\respond_AI.txt, Outputs\ocr\request_client.txt")
     print(r"Original OCR uploads: Outputs\files")
-    print("Mock delay: random 1-2s per OCR/LLM request; override with TEST_MOCK_DELAY_SECONDS=0")
+    print("Mock delay: random 2-8s per OCR/LLM request; override with TEST_MOCK_DELAY_SECONDS=0")
 
     app.run(
         host=host,
