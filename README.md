@@ -2,6 +2,7 @@
 
 > Hệ thống **OCR + Local LLM + Rule Engine** phục vụ đọc chứng từ, trích xuất dữ liệu và hỗ trợ đối chiếu nghiệp vụ BEM/ĐNTT.
 
+<p align="center">\n  <img src="./docs/images/readme_overview.svg" width="100%" alt="AI OCR + Local LLMs for BEM overview">\n</p>\n
 ---
 
 ## 📌 Giới thiệu
