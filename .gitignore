@@ -26,6 +26,15 @@ Logs/
 .tmp/
 tmp/
 _report_preview/
+
+# Local development / test source not committed
+tests/
+tools/
+font/
+engineOld.py
+main_iisOld.py
+build_compact_full_report.py
+
 # Local datasets / training artifacts
 Data_test/
 App/LLMs_Train/data/
