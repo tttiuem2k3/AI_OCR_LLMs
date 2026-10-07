@@ -26,6 +26,9 @@ Logs/
 .tmp/
 tmp/
 _report_preview/
+.artifact-edit/
+.codex-artifact-rules-check/
+.codex_tmp/
 
 # Local development / test source not committed
 tests/
@@ -70,3 +73,5 @@ Thumbs.db
 .DS_Store
 *.[b]in
 /wfastcgi/
+
+Prompt_AI_BEM_v11/

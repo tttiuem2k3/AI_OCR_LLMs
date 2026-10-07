@@ -1,9 +1,0 @@
-*** Begin Patch
-*** Update File: .codex_tmp/code_flow_report_20261001/build_source_code_mechanism_report_v4.py
-@@
--    right_arrow(draw, 1440, 960, 2180, DB)
--    tag(draw, (1660, 880, 1960, 929), "API AI ghi và đọc trạng thái kết quả", DB, 16)
-+    draw.line((1120, 1210, 1120, 1280), fill=DB, width=6)
-+    right_arrow(draw, 1120, 1280, 2180, DB)
-+    tag(draw, (1410, 1302, 1890, 1355), "API AI ghi và đọc trạng thái kết quả", DB, 16)
-*** End Patch
