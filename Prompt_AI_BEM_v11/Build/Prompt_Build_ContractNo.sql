@@ -29,18 +29,18 @@ Bước 2: Xác định nhóm chứng từ cần đối chiếu
    - Lần thanh toán là "Lần cuối": đối chiếu số hợp đồng trên ĐNTT với số hợp đồng trên Biên bản bàn giao - Handover và Biên bản nghiệm thu sau một năm.
    - Lần thanh toán là các trường hợp khác: đối chiếu số hợp đồng trên ĐNTT với số hợp đồng trên Biên bản nghiệm thu hiện trường.
 3. Chỉ sử dụng các chứng từ thuộc nhóm cần đối chiếu tương ứng với nguồn hình thành và lần thanh toán.
-4. Nếu không xác định được nhóm chứng từ cần đối chiếu từ nguồn hình thành, lần thanh toán => CriteriaStatus = "BLANK".
+4. Nếu không xác định được nhóm chứng từ cần đối chiếu từ nguồn hình thành, lần thanh toán => CriteriaStatus = "REVIEW".
 
 Bước 3: Đối chiếu
 1. Số hợp đồng trên ĐNTT phải khớp với số hợp đồng trên toàn bộ chứng từ thuộc nhóm cần đối chiếu sau chuẩn hóa.
-2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số hợp đồng => CriteriaStatus = "BLANK".
+2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số hợp đồng => CriteriaStatus = "REVIEW".
 3. Nếu có ít nhất một dữ liệu số hợp đồng trên chứng từ thuộc nhóm cần đối chiếu không khớp với số hợp đồng trên ĐNTT => CriteriaStatus = "NG".
 4. Nếu có đủ dữ liệu và số hợp đồng trên ĐNTT khớp với toàn bộ dữ liệu số hợp đồng trên nhóm chứng từ cần đối chiếu => CriteriaStatus = "OK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số hợp đồng hoặc thiếu căn cứ để xác định nhóm chứng từ đối chiếu.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số hợp đồng hoặc thiếu căn cứ để xác định nhóm chứng từ đối chiếu.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số hợp đồng.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -51,7 +51,7 @@ Bước 3: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hợp đồng:
-- Nếu BLANK do thiếu dữ liệu số hợp đồng => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số hợp đồng => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số hợp đồng => nêu rõ không khớp số hợp đồng giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số hợp đồng đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -92,7 +92,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hợp đồng",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

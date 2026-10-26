@@ -21,19 +21,19 @@ Bước 2: Đối chiếu
 1. Số Ringi trên ĐNTT phải khớp với Số Ringi trên RINGI đính kèm và CONTRACT sau chuẩn hóa.
 2. Nếu ĐNTT ghi gộp nhiều số Ringi còn chứng từ RINGI tách thành từng file riêng thì vẫn được coi là khớp khi từng mã sau chuẩn hóa nằm trong cùng danh sách.
 3. Mức độ khớp từ 80% trở lên giữa các ký tự của một số Ringi được xem là khớp.
-4. Thiếu dữ liệu số Ringi trên nguồn cần dùng để kết luận => CriteriaStatus = "BLANK".
+4. Thiếu dữ liệu số Ringi trên nguồn cần dùng để kết luận => CriteriaStatus = "REVIEW".
 5. Có đủ dữ liệu nhưng ít nhất một số Ringi không khớp => CriteriaStatus = "NG".
 6. Số Ringi trên ĐNTT khớp toàn bộ với RINGI và CONTRACT => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file thiếu dữ liệu số Ringi; nếu thiếu hẳn loại chứng từ thì trả chuỗi rỗng "".
+- REVIEW: liệt kê file thiếu dữ liệu số Ringi; nếu thiếu hẳn loại chứng từ thì trả chuỗi rỗng "".
 - NG: liệt kê file có số Ringi không khớp.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file thiếu Số Ringi hoặc thiếu hẳn chứng từ cần đối chiếu.
+- REVIEW: nêu rõ loại chứng từ và file thiếu Số Ringi hoặc thiếu hẳn chứng từ cần đối chiếu.
 - NG: nêu rõ Số Ringi không khớp giữa ĐNTT, RINGI và CONTRACT.
 - OK: ghi "Số Ringi đã hoàn toàn khớp với nhau."
 - Description phải phù hợp với CriteriaStatus.';
@@ -68,7 +68,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số Ringi",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

@@ -11,7 +11,13 @@ from typing import List, Optional
 from App.settings_all import get_settings_all
 from .text_format import to_txt_pages, to_pretty_txt_pages
 from .annotate import save_annot_images
-from .orientation import prepare_oriented_inputs, verify_prepared_orientations
+from .orientation import (
+    add_unwarping_safety_padding,
+    normalize_low_resolution_pages,
+    prepare_oriented_inputs,
+    should_use_doc_unwarping,
+    verify_prepared_orientations,
+)
 from .orientation_verifier import (
     OrientationVerifierConfig,
     TextLineOrientationVerifier,
@@ -20,6 +26,45 @@ from .orientation_verifier import (
 
 # Logger
 logger = logging.getLogger("ocr_app.engine")
+
+
+def _predict_pages_adaptive_unwarping(pipeline, images, log) -> list:
+    source_images = list(images)
+    grouped_pages = {False: [], True: []}
+    for page_index, image in enumerate(source_images):
+        use_unwarping, angle = should_use_doc_unwarping(image)
+        grouped_pages[use_unwarping].append((page_index, image))
+        log.info(
+            "Adaptive unwarping page=%d angle=%s enabled=%s",
+            page_index + 1,
+            "unknown" if angle is None else f"{angle:.2f}",
+            use_unwarping,
+        )
+
+    missing = object()
+    ordered_results = [missing] * len(source_images)
+    for use_unwarping in (False, True):
+        page_group = grouped_pages[use_unwarping]
+        if not page_group:
+            continue
+        batch_images = [image for _, image in page_group]
+        batch_results = list(
+            pipeline.predict(
+                input=batch_images,
+                use_doc_unwarping=use_unwarping,
+            )
+        )
+        if len(batch_results) != len(page_group):
+            raise ValueError(
+                "adaptive unwarping returned an unexpected page count: "
+                f"expected {len(page_group)}, got {len(batch_results)}"
+            )
+        for (page_index, _), result in zip(page_group, batch_results):
+            ordered_results[page_index] = result
+
+    if any(result is missing for result in ordered_results):
+        raise ValueError("adaptive unwarping returned incomplete page results")
+    return ordered_results
 
 
 def resolve_shared_text_detector(pipeline):
@@ -291,8 +336,8 @@ class OCREngine:
                 text_det_limit_type="max",
                 text_det_thresh=0.30,
                 text_det_unclip_ratio=1.7,
-                text_det_box_thresh=0.45,
-                text_rec_score_thresh=0.25,
+                text_det_box_thresh=0.35,
+                text_rec_score_thresh=0.30,
                 **pipeline_runtime_kwargs,
             )
         except Exception as e:
@@ -431,7 +476,8 @@ class OCREngine:
                                 orientation_decisions,
                                 verifier,
                             )
-                        predict_input = prepared_images
+                        predict_input = normalize_low_resolution_pages(prepared_images)
+                        predict_input = add_unwarping_safety_padding(predict_input)
                         for page_index, (decision, verification_trace) in enumerate(
                             zip(orientation_decisions, verification_traces),
                             start=1,
@@ -499,7 +545,22 @@ class OCREngine:
                             orientation_error,
                             exc_info=True,
                         )
-                results = list(self.pipeline.predict(input=predict_input))
+                if isinstance(predict_input, list):
+                    try:
+                        results = _predict_pages_adaptive_unwarping(
+                            self.pipeline,
+                            predict_input,
+                            logger,
+                        )
+                    except Exception as adaptive_error:
+                        logger.warning(
+                            "Adaptive unwarping failed; using pipeline default: %r",
+                            adaptive_error,
+                            exc_info=True,
+                        )
+                        results = list(self.pipeline.predict(input=predict_input))
+                else:
+                    results = list(self.pipeline.predict(input=predict_input))
         except Exception as e:
             logger.error("Pipeline.predict FAILED: %r", e, exc_info=True)
             raise

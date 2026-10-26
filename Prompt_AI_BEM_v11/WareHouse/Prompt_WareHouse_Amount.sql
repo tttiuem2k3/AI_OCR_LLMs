@@ -17,6 +17,7 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
   + INVOICE
   + COMMERCIALINVOICE
   + CUSTOMSHEET
+  + STATEMENT
   + RINGI
 - Chuẩn hóa số tiền bằng cách chuyển giá trị số tiền về dạng số thống nhất để đối chiếu.
 - Chấp nhận sai số không quá 10 đơn vị tiền tệ.
@@ -24,28 +25,35 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 
 Bước 2: Đối chiếu tổng số tiền yêu cầu trên ĐNTT
 - Đối chiếu Tổng số tiền yêu cầu trên ĐNTT khớp với tổng số tiền của INVOICE và COMMERCIALINVOICE (nếu có) và CUSTOMSHEET.
-- Đối chiếu các dòng số tiền yêu cầu khớp với INVOICE, CUSTOMSHEET tương ứng theo số hóa đơn.
+- Đối chiếu các dòng số tiền yêu cầu khớp với INVOICE, CUSTOMSHEET tương ứng theo số hóa đơn. Còn nếu có COMMERCIALINVOICE chỉ cần đối chiếu tổng tiền khớp với Tổng số tiền yêu cầu trên ĐNTT là OK
 - Căn cứ các số tiền yêu cầu trên ĐNTT làm gốc, nếu phát hiện các loại chứng từ khác có thừa mẫu số tiền thì trả về CriteriaStatus = "NG" và cảnh báo.
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
 
 Bước 3: Đối chiếu CUSTOMSHEET
 - Mỗi CUSTOMSHEET bắt buộc phải khớp với một dòng số tiền yêu cầu trên ĐNTT hoặc một nhóm các dòng ĐNTT có tổng bằng số tiền CUSTOMSHEET.
 - Mỗi số tiền trên CUSTOMSHEET phải khớp với ít nhất một số tiền trên INVOICE hoặc COMMERCIALINVOICE (nếu có)
 - Nếu số tiền khớp với INVOICE hoặc COMMERCIALINVOICE nhưng không khớp trên ĐNTT thì trả CriteriaStatus = "NG"
 
-Bước 4: Đối chiếu RINGI (nếu có)
-- Nếu có RINGI thì tổng số tiền trên RINGI phải nằm trong khoảng từ 90% đến 110% nhân với các dòng số tiền yêu cầu trên ĐNTT theo số Ringi.
+Bước 4: Đối chiếu STATEMENT/Bảng kê hóa đơn thương mại (nếu có)
+- Tổng số tiền trên STATEMENT chỉ cần khớp với tổng số tiền của một trong hai loại INVOICE hoặc COMMERCIALINVOICE có số hóa đơn tương ứng với số hóa đơn trên STATEMENT là được xem là khớp.
+- Nếu STATEMENT thiếu số hóa đơn hoặc số tiền thì CriteriaStatus = "REVIEW".
+- Nếu số tiền STATEMENT không khớp thì CriteriaStatus = "NG".
+- Nếu không có STATEMENT thì bỏ qua đối chiếu STATEMENT, không cần giải thích.
+
+Bước 5: Đối chiếu RINGI (nếu có)
+- Nếu có RINGI thì tổng số tiền trên RINGI phải lớn hơn hoặc bằng tổng các dòng số tiền yêu cầu trên ĐNTT theo cùng số Ringi.
 - Nếu không có RINGI thì bỏ qua đối chiếu RINGI, không cần giải thích.
 
-Bước 5: Quy tắc kết luận CriteriaStatus
-1. Nếu thiếu dữ liệu số tiền bắt buộc cần dùng để đối chiếu thì CriteriaStatus = "BLANK".
+Bước 6: Quy tắc kết luận CriteriaStatus
+1. Nếu thiếu dữ liệu số tiền bắt buộc cần dùng để đối chiếu thì CriteriaStatus = "REVIEW".
 2. Nếu có bất kỳ điều kiện đối chiếu số tiền nào không khớp thì CriteriaStatus = "NG".
 3. Nếu tất cả điều kiện đối chiếu số tiền đều khớp và thỏa mãn thì CriteriaStatus = "OK".
-4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file thật sự liên quan đến lỗi:
 - Nếu OK thì FileName = "".
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền.
 - Nếu NG thì chỉ liệt kê file có số tiền sai lệch thật sự sau khi đã kiểm tra các điều kiện đối chiếu.
 - Không liệt kê file đã khớp vào FileName.
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ".
@@ -56,7 +64,7 @@ Bước 5: Quy tắc kết luận CriteriaStatus
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số tiền:
 - Nếu OK thì trả đúng nội dung: "Số tiền đã hoàn toàn khớp với nhau."
-- Nếu BLANK do thiếu dữ liệu số tiền thì nêu rõ thiếu dữ liệu số tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số tiền thì nêu rõ thiếu dữ liệu số tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số tiền thì nêu rõ không khớp ở chứng từ nào.
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
 
@@ -89,8 +97,11 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {{#if (eq this.SectionType "COMMERCIALINVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Số hóa đơn: {{this.VoucherNo}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
 {{/if}}
+{{#if (eq this.SectionType "STATEMENT")}}
+{ Loại chứng từ: {{this.SectionType}} | Số hóa đơn: {{this.VoucherNo}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
+{{/if}}
 {{#if (eq this.SectionType "RINGI")}}
-{ Loại chứng từ: {{this.SectionType}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
+{ Loại chứng từ: {{this.SectionType}} | Số Ringi: {{this.RingiNo}} | Số tiền: {{this.Amount}} | Tên file: {{this.FileName}} }
 {{/if}}
 {{/each}}';
 
@@ -99,7 +110,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

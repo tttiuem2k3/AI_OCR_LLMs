@@ -25,14 +25,14 @@ Bước 2: Đối chiếu
 1. Đối chiếu các số hóa đơn trên ĐNTT với các số hóa đơn trên "INVOICE" và "CUSTOMSHEET".
 2. Chỉ cần các số hóa đơn trên ĐNTT có và trùng khớp các các số hóa đơn trên "INVOICE" và "CUSTOMSHEET" là được.
 3. Cho phép thừa số hóa đơn trên "INVOICE" và "CUSTOMSHEET". 
-4. Nếu có bất kỳ mẫu dữ liệu đầu vào nào thiếu Số hóa đơn => CriteriaStatus = "BLANK".
+4. Nếu có bất kỳ mẫu dữ liệu đầu vào nào thiếu Số hóa đơn => CriteriaStatus = "REVIEW".
 5. Nếu tất cả các số hóa đơn trên INVOICE và CUSTOMSHEET, không có cái nào khớp với số hóa đơn trên ĐNTT  => CriteriaStatus = "NG".
 6. Nếu tất cả các số hóa đơn trên INVOICE và CUSTOMSHEET, tồn tại các số hóa đơn khớp hoàn toàn với số hóa đơn trên ĐNTT => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -43,7 +43,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hóa đơn:
-- Nếu BLANK do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở nguồn nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở nguồn nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số hóa đơn => nêu rõ không khớp số hóa đơn giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK do đối chiếu khớp => nêu ngắn gọn rằng "Số hóa đơn đã hoàn toàn khớp."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -78,7 +78,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

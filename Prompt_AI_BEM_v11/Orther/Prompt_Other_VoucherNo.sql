@@ -18,19 +18,19 @@ Bước 1: Chuẩn hóa dữ liệu
 Bước 2: Đối chiếu
 1. So sánh tập Số hóa đơn trên ĐNTT với tập Số hóa đơn trên INVOICE hoặc COMMERCIALINVOICE sau chuẩn hóa.
 2. Mỗi số hóa đơn trên ĐNTT phải có giá trị khớp trên ít nhất một INVOICE hoặc COMMERCIALINVOICE và ngược lại.
-3. Thiếu dữ liệu cần dùng để kết luận => CriteriaStatus = "BLANK".
+3. Thiếu dữ liệu cần dùng để kết luận => CriteriaStatus = "REVIEW".
 4. Có ít nhất một số hóa đơn không khớp => CriteriaStatus = "NG".
 5. Tất cả số hóa đơn khớp => CriteriaStatus = "OK".
-6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file bị thiếu số hóa đơn.
+- REVIEW: liệt kê file bị thiếu số hóa đơn.
 - NG: liệt kê file có số hóa đơn không khớp.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file bị thiếu số hóa đơn.
+- REVIEW: nêu rõ loại chứng từ và file bị thiếu số hóa đơn.
 - NG: nêu rõ số hóa đơn không khớp giữa ĐNTT và INVOICE hoặc COMMERCIALINVOICE.
 - OK: ghi "Số hóa đơn đã hoàn toàn khớp với nhau."
 - Description phải phù hợp với CriteriaStatus.';
@@ -65,7 +65,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

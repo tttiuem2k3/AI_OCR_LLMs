@@ -34,17 +34,17 @@ Bước 1: Chuẩn hóa điều kiện giao hàng
 Bước 2: So sánh
 1. Sử dụng dữ liệu của các chứng từ thuộc loại CUSTOMSHEET, PO, COMMERCIALINVOICE để kiểm tra tiêu chí.
 2. Tất cả các mẫu chứng từ cần dùng để kết luận phải có dữ liệu điều kiện giao hàng.
-3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu điều kiện giao hàng => CriteriaStatus = "BLANK".
+3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu điều kiện giao hàng => CriteriaStatus = "REVIEW".
 4. Nếu dữ liệu COMMERCIALINVOICE có nhiều mẫu và có nhiều giá trị điều kiện giao hàng thì chọn điều kiện giao hàng chiếm đa số trong các mẫu COMMERCIALINVOICE làm giá trị đại diện để đối chiếu.
 6. Điều kiện giao hàng đại diện của COMMERCIALINVOICE phải khớp với điều kiện giao hàng của CUSTOMSHEET sau chuẩn hóa.
 7. Điều kiện giao hàng đại diện của COMMERCIALINVOICE phải khớp với điều kiện giao hàng của PO sau chuẩn hóa.
 8. Nếu có ít nhất một điều kiện giao hàng sai lệch giữa các chứng từ => CriteriaStatus = "NG".
 9. Nếu toàn bộ dữ liệu điều kiện giao hàng giữa các chứng từ đều hợp lệ và thống nhất sau chuẩn hóa => CriteriaStatus = "OK".
-10. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+10. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu điều kiện giao hàng.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu điều kiện giao hàng.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu điều kiện giao hàng.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -55,7 +55,7 @@ Bước 2: So sánh
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu điều kiện giao hàng:
-- Nếu BLANK do thiếu dữ liệu điều kiện giao hàng => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu điều kiện giao hàng => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp điều kiện giao hàng => nêu rõ không khớp điều kiện giao hàng giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Điều kiện giao hàng đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -88,7 +88,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Điều kiện giao hàng",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

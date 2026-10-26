@@ -23,19 +23,19 @@ Bước 2: Chọn chứng từ và đối chiếu
 3. Tất cả loại tiền thuộc nhóm chứng từ cần đối chiếu phải giống nhau sau chuẩn hóa.
 
 Bước 3: Kết luận
-1. Thiếu Loại tiền trên một chứng từ bắt buộc => CriteriaStatus = "BLANK".
+1. Thiếu Loại tiền trên một chứng từ bắt buộc => CriteriaStatus = "REVIEW".
 2. Có đủ dữ liệu nhưng có ít nhất một Loại tiền không khớp => CriteriaStatus = "NG".
 3. Có đủ dữ liệu và tất cả Loại tiền khớp => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file thiếu Loại tiền.
+- REVIEW: liệt kê file thiếu Loại tiền.
 - NG: liệt kê file có Loại tiền không khớp.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file thiếu Loại tiền.
+- REVIEW: nêu rõ loại chứng từ và file thiếu Loại tiền.
 - NG: nêu rõ Loại tiền không khớp giữa ĐNTT và các chứng từ liên quan.
 - OK: ghi "Loại tiền đã hoàn toàn khớp với nhau."
 - Description phải phù hợp với CriteriaStatus.';
@@ -76,7 +76,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Loại tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

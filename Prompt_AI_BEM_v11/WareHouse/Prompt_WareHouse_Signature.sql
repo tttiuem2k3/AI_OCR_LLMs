@@ -17,14 +17,15 @@ Bước 1: Chuẩn hóa dữ liệu dùng để kiểm tra
   + Nếu giá trị rỗng, null, không đọc được hoặc có giá trị "BLANK" thì được xem là "không có dữ liệu chữ ký và con dấu".
 
 Bước 2: Kiểm tra
-1. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu chữ ký và con dấu hoặc có giá trị "BLANK" => CriteriaStatus = "BLANK".
+1. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu chữ ký và con dấu hoặc có giá trị "BLANK" => CriteriaStatus = "REVIEW".
 2. Nếu không có dữ liệu BLANK và có ít nhất một mẫu dữ liệu có giá trị "INVALID" => CriteriaStatus = "NG".
 3. Nếu tất cả các mẫu dữ liệu dùng để kiểm tra đều có giá trị "VALID" => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu chữ ký và con dấu.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu chữ ký và con dấu.
 - Nếu NG thì liệt kê chính xác tên file có dữ liệu chữ ký và con dấu không hợp lệ.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -35,7 +36,7 @@ Bước 2: Kiểm tra
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả kiểm tra chữ ký và con dấu:
-- Nếu BLANK do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu hoặc có giá trị BLANK ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu hoặc có giá trị BLANK ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do có giá trị "INVALID" => nêu rõ loại chứng từ nào, file nào có chữ ký và con dấu không hợp lệ, cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Chữ ký và con dấu đã hợp lệ."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -68,7 +69,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Chữ ký và con dấu",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

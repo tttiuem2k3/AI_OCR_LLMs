@@ -6,7 +6,7 @@ import re
 from typing import List
 from io import BytesIO
 
-OFFICE_TEXT_EXTENSIONS = frozenset({".csv", ".docx", ".xlsx", ".xls", ".pptx"})
+OFFICE_TEXT_EXTENSIONS = frozenset({".csv", ".doc", ".docx", ".xlsx", ".xls", ".pptx"})
 _EXCEL_FALLBACK_PAGE_ROWS = 75
 _EXCEL_FALLBACK_MAX_COLS = 64
 _CUSTOMS_PAGE_MARKER_RE = re.compile(r"^\s*(\d{1,3})\s*/\s*(\d{1,3})\s*$")
@@ -169,6 +169,39 @@ def extract_docx_text(src: str | Path) -> List[str]:
     lines = [b for b in blocks if b is not None]
     pages = _paginate_lines(lines, max_lines=40, max_chars=88)
     return pages
+
+
+def extract_doc_text(src: str | Path) -> List[str]:
+    try:
+        import aspose.words_foss as aw
+    except ImportError as error:
+        raise RuntimeError(
+            "Thiếu thư viện aspose-words-foss để đọc file .doc"
+        ) from error
+
+    try:
+        document = aw.Document(str(src))
+        model = getattr(document, "light_document_model", None)
+        sections = getattr(model, "sections", None)
+        if sections is None:
+            text = document.get_text() or ""
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+        else:
+            lines = []
+            for section in sections:
+                paragraphs = section.body.get_child_nodes(
+                    aw.NodeType.PARAGRAPH,
+                    True,
+                )
+                lines.extend(
+                    paragraph.text.strip()
+                    for paragraph in paragraphs
+                    if paragraph.text.strip()
+                )
+    except Exception as error:
+        raise ValueError(f"Không thể đọc file .doc: {error}") from error
+
+    return _paginate_lines(lines, max_lines=40, max_chars=88)
 
 
 def _decode_csv_bytes(data: bytes) -> str:
@@ -639,6 +672,8 @@ def extract_office_text(path: str | Path) -> List[str]:
     ext = Path(path).suffix.lower()
     if ext == ".csv":
         return extract_csv_text(path)
+    if ext == ".doc":
+        return extract_doc_text(path)
     if ext == ".docx":
         return extract_docx_text(path)
     if ext == ".xlsx":

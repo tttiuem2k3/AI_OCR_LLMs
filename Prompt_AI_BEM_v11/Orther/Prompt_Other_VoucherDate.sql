@@ -17,19 +17,19 @@ Bước 2: Đối chiếu
 1. INVOICE hoặc COMMERCIALINVOICE phải có dữ liệu Ngày hóa đơn.
 2. Nếu có INSPECTION thì Ngày hóa đơn phải khớp với Ngày nghiệm thu trên INSPECTION sau chuẩn hóa. Không có thì bỏ qua không cần giải thích gì.
 3. Nếu có nhiều hóa đơn hoặc nhiều INSPECTION, đối chiếu theo các ngày thuộc cùng hồ sơ thanh toán; không so sánh chéo hồ sơ không liên quan.
-4. Thiếu ngày trên chứng từ bắt buộc => CriteriaStatus = "BLANK".
+4. Thiếu ngày trên chứng từ bắt buộc => CriteriaStatus = "REVIEW".
 5. Có INSPECTION nhưng ngày không khớp => CriteriaStatus = "NG".
 6. Các ngày hóa đơn cần đối chiếu đều khớp => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file bị thiếu ngày cần đối chiếu.
+- REVIEW: liệt kê file bị thiếu ngày cần đối chiếu.
 - NG: liệt kê file có ngày không khớp.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file bị thiếu ngày.
+- REVIEW: nêu rõ loại chứng từ và file bị thiếu ngày.
 - NG: nêu rõ Ngày hóa đơn không khớp Ngày nghiệm thu và các file liên quan.
 - OK: ghi "Ngày hóa đơn đã hoàn toàn khớp với dữ liệu cần đối chiếu."
 - Description phải phù hợp với CriteriaStatus.';
@@ -62,7 +62,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Ngày hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

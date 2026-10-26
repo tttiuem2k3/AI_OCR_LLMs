@@ -1,4 +1,8 @@
+import asyncio
+import math
+import queue
 import re
+import threading
 import unicodedata
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Dict, Any, Union
@@ -7,6 +11,42 @@ from typing import List, Optional, Tuple, Dict, Any, Union
 # ============================================================
 # Public API
 # ============================================================
+
+DEFAULT_OCR_TIMEOUT_SECONDS = 600.0
+
+
+def run_ocr_inference(
+    engine,
+    file_path: str,
+    *,
+    annot_stem: str,
+    timeout_seconds: float = DEFAULT_OCR_TIMEOUT_SECONDS,
+) -> Any:
+    timeout = float(timeout_seconds)
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("OCR timeout must be greater than 0 seconds")
+
+    result_queue: queue.Queue = queue.Queue(maxsize=1)
+
+    def worker() -> None:
+        try:
+            result = asyncio.run(engine.ainfer(file_path, annot_stem=annot_stem))
+            result_queue.put((True, result, None))
+        except BaseException as error:
+            result_queue.put((False, error, error.__traceback__))
+
+    thread = threading.Thread(target=worker, name="ocr-inference", daemon=True)
+    thread.start()
+    thread.join(timeout=timeout)
+
+    if thread.is_alive():
+        raise TimeoutError(f"OCR inference timed out after {timeout:g} seconds")
+
+    succeeded, payload, traceback = result_queue.get_nowait()
+    if succeeded:
+        return payload
+    raise payload.with_traceback(traceback)
+
 
 def split_ocr_text(
     ocr_text: str,

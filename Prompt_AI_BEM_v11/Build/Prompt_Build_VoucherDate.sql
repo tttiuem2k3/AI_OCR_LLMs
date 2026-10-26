@@ -30,15 +30,15 @@ Bước 2: Đối chiếu
 1. Đối chiếu ngày hóa đơn trên INVOICE trùng khớp với ngày hóa đơn trên CUSTOMSHEET theo nhóm số hóa đơn
 2. Nếu không có CUSTOMSHEET thì đối chiếu ngày hóa đơn trên INVOICE trùng khớp với Ngày nghiệm thu trên INSPECTION 
 3. Cho phép chênh lệch tối đa 01 ngày do sai khác múi giờ hoặc thời điểm ký điện tử.
-4. Nếu bất kỳ mẫu INVOICE nào cần dùng để kết luận thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "BLANK".
+4. Nếu bất kỳ mẫu INVOICE nào cần dùng để kết luận thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "REVIEW".
 5. Nếu không thỏa mãn điều kiện đối chiếu ở trên => CriteriaStatus = "NG".
 6. Nếu thỏa mãn điều kiện số đối chiếu, các ngày trùng khớp nhau => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
 - Nếu nguồn hình thành là "Đặt cọc/trả trước" và bỏ qua đối chiếu thì trả chuỗi rỗng "".
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu ngày hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -49,7 +49,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu ngày hóa đơn:
-- Nếu BLANK do thiếu dữ liệu ngày hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu ngày hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do chênh lệch ngày quá 01 ngày => nêu rõ sai lệch ngày giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK do đối chiếu ngày hợp lệ => nêu ngắn gọn rằng "Ngày hóa đơn đã hoàn toàn trùng khớp."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -82,7 +82,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Ngày hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

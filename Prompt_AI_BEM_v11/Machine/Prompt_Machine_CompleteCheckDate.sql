@@ -9,14 +9,14 @@ DECLARE @PromptBussiness NVARCHAR(MAX) = N'Bạn là AI kiểm tra tiêu chí "N
 --- Thông tin quy tắc so sánh
 DECLARE @PromptHandle NVARCHAR(MAX) = N'* CÁCH ĐỐI CHIẾU "Ngày hoàn thành kiểm tra"
 1. Trạng thái thông quan biểu thị cho việc có hoặc không có ngày hoàn thành kiểm tra.
-2. Nếu bất kỳ mẫu dữ liệu thiếu dữ liệu thông quan => CriteriaStatus = "BLANK".
+2. Nếu bất kỳ mẫu dữ liệu thiếu dữ liệu thông quan => CriteriaStatus = "REVIEW".
 3. Nếu có ít nhất một mẫu dữ liệu có giá trị "Thông quan" = "NO" => CriteriaStatus = "NG".
 4. Nếu toàn bộ mẫu CUSTOMSHEET đều có giá trị "Thông quan" = "YES" => CriteriaStatus = "OK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu thông quan.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu thông quan.
 - Nếu NG thì liệt kê chính xác tên file có giá trị thông quan không hợp lệ.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -27,7 +27,7 @@ DECLARE @PromptHandle NVARCHAR(MAX) = N'* CÁCH ĐỐI CHIẾU "Ngày hoàn thà
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả kiểm tra ngày hoàn thành kiểm tra:
-- Nếu BLANK => nêu rõ thiếu dữ liệu ngày hoàn thành kiểm tra ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW => nêu rõ thiếu dữ liệu ngày hoàn thành kiểm tra ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG => nêu rõ chứng từ nào, file nào chưa có ngày hoàn thành kểm tra, cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Dữ liệu ngày hoàn thành kiểm tra đã hoàn toàn hợp lệ."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -54,7 +54,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Ngày hoàn thành kiểm tra",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn về tiêu chí"
   }

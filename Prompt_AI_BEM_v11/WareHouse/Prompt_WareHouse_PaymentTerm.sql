@@ -80,6 +80,7 @@ Bắt buộc:
 Nếu không có ngày mốc hợp lệ:
 DueDate = null;
 Description = "Không có ngày mốc hợp lệ từ nguồn bắt buộc."
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
 
 4. TÍNH DUEDATE
 

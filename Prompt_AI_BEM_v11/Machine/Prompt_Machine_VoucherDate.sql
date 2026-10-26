@@ -34,13 +34,13 @@ Bước 2: Đối chiếu
    => Vậy ngày hóa đơn của mỗi mẫu dữ liệu loại CUSTOMSHEET có thể đối chiếu với ngày hóa đơn của INVOICE hoặc COMMERCIALINVOICE chỉ cần thỏa mãn 1 trong 2 trường hợp được coi là hợp lệ (cho phép chênh lệch không quá 1 ngày, ví dụ ngày 02-01-2000, 01-01-2000 hoặc 02-01-2000, 03-01-2000 là vẫn hợp lệ)
 4. Không bắt buộc số hóa đơn INVOICE phải giống số hóa đơn COMMERCIALINVOICE nếu mỗi nhóm đối chiếu tương ứng đều hợp lệ.
 5. Nếu có cùng số hóa đơn sau chuẩn hóa nhưng ngày hóa đơn khác nhau trong cùng nhóm đối chiếu => CriteriaStatus = "NG".
-6. Nếu chứng từ cần dùng để đối chiếu bị thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "BLANK".
+6. Nếu chứng từ cần dùng để đối chiếu bị thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "REVIEW".
 7. Nếu ngày hóa đơn khớp nhau hoặc chênh lệch tối đa 1 ngày theo từng nhóm  => CriteriaStatus = "OK".
-8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu ngày hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -51,7 +51,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu ngày hóa đơn:
-- Nếu BLANK do thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp ngày hóa đơn => nêu rõ không khớp ngày hóa đơn giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Ngày hóa đơn đã hoàn toàn hợp lệ."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -84,7 +84,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Ngày hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

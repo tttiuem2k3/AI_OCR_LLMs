@@ -42,14 +42,14 @@ Bước 3: Đối chiếu
 2. Chỉ được coi là khớp khi tên nhà cung cấp giữa các chứng từ thể hiện cùng một công ty hoặc cùng một pháp nhân
 3. RINGI nếu có thì đối chiếu, không có thì bỏ qua, không cần giải thích.
 4. Mức độ khớp >= 80% sau chuẩn hóa thì được xem là khớp, nếu < 80% thì là không khớp.
-5. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "BLANK".
+5. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "REVIEW".
 6. Nếu có ít nhất một dữ liệu tên nhà cung cấp trên chứng từ thuộc nhóm cần đối chiếu không khớp với tên nhà cung cấp trên ĐNTT => CriteriaStatus = "NG".
 7. Nếu có đủ dữ liệu, đủ chứng từ bắt buộc và tên nhà cung cấp trên ĐNTT khớp với toàn bộ dữ liệu tên nhà cung cấp trên nhóm chứng từ cần đối chiếu => CriteriaStatus = "OK".
-8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK do thiếu dữ liệu tên nhà cung cấp thì liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
+- Nếu REVIEW do thiếu dữ liệu tên nhà cung cấp thì liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu tên nhà cung cấp.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -60,7 +60,7 @@ Bước 3: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu tên nhà cung cấp:
-- Nếu BLANK do thiếu dữ liệu tên nhà cung cấp => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu tên nhà cung cấp => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp tên nhà cung cấp => nêu rõ không khớp tên nhà cung cấp giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Tên nhà cung cấp đã hoàn toàn trùng khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -107,7 +107,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Tên nhà cung cấp",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

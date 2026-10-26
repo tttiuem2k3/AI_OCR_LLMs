@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, replace
 from typing import Callable, Iterable, Mapping, Sequence
 
 import numpy as np
+
+
+logger = logging.getLogger("ocr_app.orientation")
 
 
 VALID_ANGLES = {0, 90, 180, 270}
@@ -218,6 +222,259 @@ def pad_to_square(image: np.ndarray, fill_value: int = 255) -> np.ndarray:
     left = (side - width) // 2
     padded[top : top + height, left : left + width] = source
     return np.ascontiguousarray(padded)
+
+
+def _weighted_median(values: np.ndarray, weights: np.ndarray) -> float:
+    if values.size == 0 or values.size != weights.size:
+        raise ValueError("values and weights must be non-empty and equal length")
+    order = np.argsort(values)
+    ordered_values = values[order]
+    ordered_weights = weights[order]
+    total_weight = float(ordered_weights.sum())
+    if total_weight <= 0.0:
+        raise ValueError("weights must have a positive sum")
+    cutoff = total_weight * 0.5
+    index = int(np.searchsorted(np.cumsum(ordered_weights), cutoff, side="left"))
+    return float(ordered_values[min(index, ordered_values.size - 1)])
+
+
+def _detect_skew_lines_cv2(image: np.ndarray) -> list[tuple[float, float, float, float]]:
+    import cv2
+
+    source = np.asarray(image)
+    if source.ndim == 2:
+        grayscale = source
+    elif source.ndim == 3:
+        grayscale = cv2.cvtColor(source[:, :, :3], cv2.COLOR_BGR2GRAY)
+    else:
+        raise ValueError("image must have 2 or 3 dimensions")
+
+    height, width = grayscale.shape[:2]
+    if height <= 0 or width <= 0:
+        return []
+    analysis_height = max(1, round(height * 0.82))
+    grayscale = grayscale[:analysis_height, :]
+
+    _, binary = cv2.threshold(
+        grayscale,
+        0,
+        255,
+        cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU,
+    )
+    connect_width = max(3, round(width * 0.015))
+    connect_kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT,
+        (connect_width, 1),
+    )
+    connected = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, connect_kernel)
+    edges = cv2.Canny(connected, 50, 150, apertureSize=3)
+    min_line_length = max(40, round(width * 0.12))
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 360.0,
+        threshold=max(30, round(width * 0.05)),
+        minLineLength=min_line_length,
+        maxLineGap=max(8, round(width * 0.02)),
+    )
+    if lines is None:
+        return []
+    return [tuple(float(value) for value in line[0]) for line in lines]
+
+
+def estimate_skew_angle_fast(
+    image: np.ndarray,
+    *,
+    max_side: int = 800,
+    min_line_length_ratio: float = 0.12,
+    max_candidate_angle: float = 30.0,
+    max_angle_spread: float = 5.0,
+    min_lines: int = 3,
+    line_detector: Callable[
+        [np.ndarray], Sequence[Sequence[float]]
+    ] | None = None,
+) -> float | None:
+    source = np.asarray(image)
+    if source.ndim not in (2, 3):
+        raise ValueError("image must have 2 or 3 dimensions")
+    height, width = source.shape[:2]
+    if height <= 0 or width <= 0:
+        return None
+
+    long_side = max(height, width)
+    prepared = source
+    if long_side > int(max_side):
+        import cv2
+
+        scale = float(max_side) / float(long_side)
+        resized_width = max(1, round(width * scale))
+        resized_height = max(1, round(height * scale))
+        prepared = cv2.resize(
+            source,
+            (resized_width, resized_height),
+            interpolation=cv2.INTER_AREA,
+        )
+
+    detector = line_detector or _detect_skew_lines_cv2
+    lines = detector(prepared)
+    prepared_width = prepared.shape[1]
+    min_length = max(1.0, float(prepared_width) * float(min_line_length_ratio))
+    angles: list[float] = []
+    weights: list[float] = []
+    for raw_line in lines:
+        if len(raw_line) < 4:
+            continue
+        x1, y1, x2, y2 = (float(value) for value in raw_line[:4])
+        delta_x = x2 - x1
+        delta_y = y2 - y1
+        length = float(np.hypot(delta_x, delta_y))
+        if length < min_length:
+            continue
+        angle = float(np.degrees(np.arctan2(delta_y, delta_x)))
+        if angle > 90.0:
+            angle -= 180.0
+        elif angle < -90.0:
+            angle += 180.0
+        if abs(angle) > float(max_candidate_angle):
+            continue
+        angles.append(angle)
+        weights.append(length)
+
+    if len(angles) < int(min_lines):
+        return None
+    angle_values = np.asarray(angles, dtype=np.float64)
+    weight_values = np.asarray(weights, dtype=np.float64)
+    median_angle = _weighted_median(angle_values, weight_values)
+    angle_spread = _weighted_median(
+        np.abs(angle_values - median_angle),
+        weight_values,
+    )
+    if angle_spread > float(max_angle_spread):
+        return None
+    return median_angle
+
+
+def should_use_doc_unwarping(
+    image: np.ndarray,
+    *,
+    threshold_degrees: float = 10.0,
+    line_detector: Callable[
+        [np.ndarray], Sequence[Sequence[float]]
+    ] | None = None,
+) -> tuple[bool, float | None]:
+    angle = estimate_skew_angle_fast(image, line_detector=line_detector)
+    if angle is None:
+        return True, None
+    return abs(angle) > float(threshold_degrees), angle
+
+
+def normalize_low_resolution_pages(
+    images: Sequence[np.ndarray],
+    *,
+    target_short_side: int = 960,
+    low_resolution_long_side: int = 1200,
+    max_long_side: int = 1600,
+    resize_image: Callable[[np.ndarray, tuple[int, int]], np.ndarray] | None = None,
+) -> list[np.ndarray]:
+    normalized_images: list[np.ndarray] = []
+    for page_index, image in enumerate(images, start=1):
+        source = np.asarray(image)
+        height, width = source.shape[:2]
+        short_side = min(width, height)
+        long_side = max(width, height)
+
+        if (
+            height <= width
+            or long_side >= low_resolution_long_side
+            or short_side >= target_short_side
+        ):
+            normalized_images.append(source)
+            continue
+
+        scale = min(target_short_side / short_side, max_long_side / long_side)
+        if scale <= 1:
+            normalized_images.append(source)
+            continue
+
+        resized_width = round(width * scale)
+        resized_height = round(height * scale)
+        if resize_image is None:
+            import cv2
+
+            resized = cv2.resize(
+                source,
+                (resized_width, resized_height),
+                interpolation=cv2.INTER_CUBIC,
+            )
+        else:
+            resized = resize_image(source, (resized_width, resized_height))
+
+        logger.info(
+            "OCR low-res page upscale page=%d %dx%d -> %dx%d",
+            page_index,
+            width,
+            height,
+            resized_width,
+            resized_height,
+        )
+        normalized_images.append(np.ascontiguousarray(resized))
+    return normalized_images
+
+
+def add_unwarping_safety_padding(
+    images: Sequence[np.ndarray],
+    *,
+    small_short_side: int = 960,
+    small_long_side: int = 1400,
+    edge_ratio: float = 0.05,
+    ink_threshold: int = 245,
+    ink_ratio_threshold: float = 0.001,
+    padding_ratio: float = 0.05,
+    min_padding: int = 48,
+    max_padding: int = 128,
+    fill_value: int = 255,
+) -> list[np.ndarray]:
+    padded_images: list[np.ndarray] = []
+    for page_index, image in enumerate(images, start=1):
+        source = np.asarray(image)
+        height, width = source.shape[:2]
+        short_side = min(width, height)
+        long_side = max(width, height)
+        is_small_page = short_side < small_short_side or long_side < small_long_side
+
+        edge_size = max(1, round(min(width, height) * edge_ratio))
+        grayscale = source if source.ndim == 2 else source[:, :, :3].mean(axis=2)
+        edge_pixels = np.concatenate(
+            (
+                grayscale[:edge_size, :].ravel(),
+                grayscale[-edge_size:, :].ravel(),
+                grayscale[:, :edge_size].ravel(),
+                grayscale[:, -edge_size:].ravel(),
+            )
+        )
+        edge_ink_ratio = float(np.mean(edge_pixels < ink_threshold)) if edge_pixels.size else 0.0
+        has_edge_content = edge_ink_ratio >= ink_ratio_threshold
+        if not (is_small_page or has_edge_content):
+            padded_images.append(source)
+            continue
+
+        padding = round(long_side * padding_ratio)
+        padding = max(min_padding, min(max_padding, padding))
+        output_shape = (height + padding * 2, width + padding * 2, *source.shape[2:])
+        padded = np.full(output_shape, fill_value, dtype=source.dtype)
+        padded[padding : padding + height, padding : padding + width] = source
+        logger.info(
+            "OCR unwarping safety padding page=%d %dx%d -> %dx%d reason=%s edge_ink=%.4f",
+            page_index,
+            width,
+            height,
+            width + padding * 2,
+            height + padding * 2,
+            "small" if is_small_page else "edge_content",
+            edge_ink_ratio,
+        )
+        padded_images.append(np.ascontiguousarray(padded))
+    return padded_images
 
 
 def _prediction_score_map(prediction: Mapping[str, object]) -> dict[int, float]:

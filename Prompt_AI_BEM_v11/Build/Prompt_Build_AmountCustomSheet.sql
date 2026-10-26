@@ -20,14 +20,14 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 Bước 2: Đối chiếu
 1. Số tiền trên CUSTOMSHEET phải được đối chiếu với số tiền trên INVOICE theo Số hóa đơn tương ứng.
 2. Nếu một CUSTOMSHEET tương ứng với nhiều INVOICE thì phải cộng tổng số tiền của các INVOICE liên quan để đối chiếu với số tiền trên CUSTOMSHEET.
-3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền => CriteriaStatus = "BLANK".
+3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền => CriteriaStatus = "REVIEW".
 4. Nếu có ít nhất một điều kiện đối chiếu sai => CriteriaStatus = "NG".
 5. Nếu có đủ dữ liệu và tất cả điều kiện đối chiếu đều đúng => CriteriaStatus = "OK".
-6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -38,7 +38,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số tiền trên tờ khai:
-- Nếu BLANK do thiếu dữ liệu số tiền => nêu rõ thiếu dữ liệu số tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số tiền => nêu rõ thiếu dữ liệu số tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số tiền => nêu rõ không khớp số tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số tiền hóa đơn và số tiền trên tờ khai đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -68,7 +68,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền trên tờ khai",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

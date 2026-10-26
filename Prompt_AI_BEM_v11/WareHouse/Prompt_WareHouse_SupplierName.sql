@@ -23,6 +23,9 @@ Bước 1: Đọc dữ liệu cần kiểm tra
   + RINGI
 - Mỗi mẫu dữ liệu đầu vào nằm trong một cặp dấu {}.
 - Nếu trường "Tên nhà cung cấp" bị rỗng, null hoặc không đọc được thì coi là thiếu dữ liệu tên nhà cung cấp.
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
+- Nếu không có STATEMENT thì bỏ qua đối chiếu STATEMENT, không cần giải thích gì thêm.
+- Nếu không có RINGI thì bỏ qua đối chiếu RINGI, không cần giải thích gì thêm.
 
 Bước 2: Chuẩn hóa tên nhà cung cấp trước khi so sánh
 1. Chuyển toàn bộ dữ liệu sang IN HOA.
@@ -91,15 +94,15 @@ Bước 5: Quy tắc xử lý tên viết tắt hoặc tên rút gọn
 - Nếu tên rút gọn vẫn thuộc cùng nhóm tên tương đương đặc biệt thì phải xem là OK.
 
 Bước 6: Quy tắc kết luận CriteriaStatus
-1. Nếu ĐNTT thiếu tên nhà cung cấp hoặc chứng từ chính cần kiểm tra thiếu tên nhà cung cấp thì CriteriaStatus = "BLANK".
+1. Nếu ĐNTT thiếu tên nhà cung cấp hoặc chứng từ chính cần kiểm tra thiếu tên nhà cung cấp thì CriteriaStatus = "REVIEW".
 2. Nếu ĐNTT và các chứng từ chính cùng chỉ về một nhà cung cấp hoặc thuộc cùng nhóm tên tương đương đặc biệt sau chuẩn hóa(mức độ tương đồng trên tổng số lượng ký tự >= 80% sau chuẩn hóa) thì CriteriaStatus = "OK". 
 3. Chỉ kết luận CriteriaStatus = "NG" khi xuất hiện tên doanh nghiệp khác rõ ràng, khác thực thể nhà cung cấp, không thuộc nhóm tên tương đương đặc biệt và không thể quy về cùng tên định danh chính.
-4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. CriteriaStatus chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê tên file thật sự liên quan đến lỗi, không liệt kê tất cả file đã đọc.
 - Nếu CriteriaStatus = "OK" thì FileName bắt buộc là chuỗi rỗng "".
-- Nếu CriteriaStatus = "BLANK" thì chỉ liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
+- Nếu CriteriaStatus = "REVIEW" thì chỉ liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
 - Nếu CriteriaStatus = "NG" thì chỉ liệt kê chính xác tên file có tên nhà cung cấp sai lệch rõ ràng so với nhóm còn lại.
 - Không được liệt kê file đã khớp vào FileName.
 - Không được liệt kê file chỉ vì file đó có cách viết khác tiếng Anh/tiếng Việt, khác dấu câu, khác hậu tố pháp nhân, viết rút gọn hoặc thuộc cùng nhóm tên tương đương đặc biệt.
@@ -112,7 +115,7 @@ Bước 6: Quy tắc kết luận CriteriaStatus
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu tên nhà cung cấp:
-- Nếu BLANK do thiếu dữ liệu tên nhà cung cấp thì nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu tên nhà cung cấp thì nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp tên nhà cung cấp thì nêu rõ tên nhà cung cấp sau chuẩn hóa hoặc sau kiểm tra alias không khớp giữa loại chứng từ nào với loại chứng từ nào, cần kiểm tra lại.
 - Nếu OK thì ghi đúng câu: "Tên nhà cung cấp đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn với FileName.
@@ -160,7 +163,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Tên nhà cung cấp",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

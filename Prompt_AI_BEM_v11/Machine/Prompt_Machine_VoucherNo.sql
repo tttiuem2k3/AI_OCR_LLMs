@@ -46,13 +46,13 @@ Bước 2: Đối chiếu
 6. Nếu ĐNTT khớp INVOICE hoặc COMMERCIALINVOICE, đồng thời CUSTOMSHEET khớp COMMERCIALINVOICE hoặc INVOICE, thì bắt buộc CriteriaStatus = "OK"; không được kết luận NG chỉ vì INVOICE khác COMMERCIALINVOICE.
 7. Nếu số hóa đơn trên ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE sau chuẩn hóa => CriteriaStatus = "NG".
 8. Nếu số hóa đơn trên CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE sau chuẩn hóa => CriteriaStatus = "NG".
-9. Nếu thiếu dữ liệu số hóa đơn ở chứng từ cần dùng để đối chiếu => CriteriaStatus = "BLANK".
+9. Nếu thiếu dữ liệu số hóa đơn ở chứng từ cần dùng để đối chiếu => CriteriaStatus = "REVIEW".
 10. Nếu các điều kiện đối chiếu hợp lệ => CriteriaStatus = "OK".
-11. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+11. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -63,7 +63,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hóa đơn:
-- Nếu BLANK do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE => nêu rõ số hóa đơn ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE, cần kiểm tra lại.
 - Nếu NG do CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE => nêu rõ số hóa đơn CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE, cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số hóa đơn đã hoàn toàn khớp với nhau."
@@ -103,7 +103,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

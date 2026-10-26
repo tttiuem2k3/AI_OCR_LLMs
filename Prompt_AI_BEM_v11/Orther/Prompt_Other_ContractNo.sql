@@ -21,21 +21,21 @@ Bước 2: Chọn chứng từ theo nguồn hình thành
 2. Mức độ khớp từ 80% trở lên sau chuẩn hóa được xem là khớp.
 	
 Bước 3: Kết luận
-1. Thiếu CONTRACT hoặc INSPECTION cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-2. Có chứng từ nhưng thiếu trường Số hợp đồng => CriteriaStatus = "BLANK".
+1. Thiếu CONTRACT hoặc INSPECTION cần dùng để đối chiếu => CriteriaStatus = "REVIEW".
+2. Có chứng từ nhưng thiếu trường Số hợp đồng => CriteriaStatus = "REVIEW".
 3. Có đủ dữ liệu nhưng số hợp đồng giữa CONTRACT và INSPECTION hoặc ĐNTT không khớp => CriteriaStatus = "NG".
 4. Có đủ dữ liệu và toàn bộ số hợp đồng khớp => CriteriaStatus = "OK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK do thiếu trường trong file có sẵn: liệt kê chính xác file bị thiếu Số hợp đồng.
-- BLANK do thiếu hẳn CONTRACT hoặc INSPECTION: trả chuỗi rỗng "".
+- REVIEW do thiếu trường trong file có sẵn: liệt kê chính xác file bị thiếu Số hợp đồng.
+- REVIEW do thiếu hẳn CONTRACT hoặc INSPECTION: trả chuỗi rỗng "".
 - NG: liệt kê file có Số hợp đồng không khớp hoặc liên quan trực tiếp đến sai lệch.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ thiếu CONTRACT, INSPECTION hoặc file thiếu dữ liệu Số hợp đồng.
+- REVIEW: nêu rõ thiếu CONTRACT, INSPECTION hoặc file thiếu dữ liệu Số hợp đồng.
 - NG: nêu rõ Số hợp đồng không khớp giữa CONTRACT, INSPECTION và ĐNTT nếu có.
 - OK: ghi "Số hợp đồng đã hoàn toàn khớp với nhau."
 - Description phải phù hợp với CriteriaStatus.';
@@ -65,7 +65,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hợp đồng",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

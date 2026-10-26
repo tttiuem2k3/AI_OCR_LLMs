@@ -19,14 +19,14 @@ Bước 1: Chuẩn hóa số PO
 
 Bước 2: So sánh
 1. Số PO trên INSPECTION phải khớp với số PO trên PO sau chuẩn hóa.
-2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số PO => CriteriaStatus = "BLANK".
+2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số PO => CriteriaStatus = "REVIEW".
 3. Nếu có ít nhất một dữ liệu số PO trên PO hoặc INSPECTION không khớp với nhau => CriteriaStatus = "NG".
 4. Nếu dữ liệu số PO trên INSPECTION khớp với toàn bộ dữ liệu số PO trên PO => CriteriaStatus = "OK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK do thiếu dữ liệu số PO thì liệt kê chính xác tên file bị thiếu dữ liệu số PO.
+- Nếu REVIEW do thiếu dữ liệu số PO thì liệt kê chính xác tên file bị thiếu dữ liệu số PO.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số PO.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -37,7 +37,7 @@ Bước 2: So sánh
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số PO:
-- Nếu BLANK do thiếu dữ liệu số PO => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số PO => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số PO => nêu rõ không khớp số PO giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK do đối chiếu khớp => nêu ngắn gọn rằng "Số PO đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -67,7 +67,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số PO",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

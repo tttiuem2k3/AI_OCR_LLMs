@@ -20,20 +20,20 @@ Bước 2: Xác định nhóm chứng từ bắt buộc
 1. Nhóm chứng từ bắt buộc để kiểm tra gồm:
    - INVOICE.
    - CONTRACT.
-2. Nếu không tồn tại bất kỳ mẫu dữ liệu nào thuộc nhóm chứng từ bắt buộc => CriteriaStatus = "BLANK".
+2. Nếu không tồn tại bất kỳ mẫu dữ liệu nào thuộc nhóm chứng từ bắt buộc => CriteriaStatus = "REVIEW".
 3. Nếu có dữ liệu nhưng thiếu ít nhất một trong ba loại chứng từ bắt buộc => CriteriaStatus = "NG".
 4. Chỉ khi đã có đủ cả 03 loại chứng từ bắt buộc mới được tiếp tục kiểm tra giá trị chữ ký và con dấu.
 
 Bước 3: Kiểm tra
 1. Nếu có đủ 03 loại chứng từ bắt buộc và có ít nhất một mẫu dữ liệu có giá trị "INVALID" => CriteriaStatus = "NG".
-2. Nếu có đủ 03 loại chứng từ bắt buộc, không có "INVALID" và có ít nhất một mẫu dữ liệu có giá trị "BLANK" => CriteriaStatus = "BLANK".
+2. Nếu có đủ 03 loại chứng từ bắt buộc, không có "INVALID" và có ít nhất một mẫu dữ liệu có giá trị "BLANK" => CriteriaStatus = "REVIEW".
 3. Nếu có đủ 03 loại chứng từ bắt buộc và tất cả các mẫu dữ liệu cần dùng đều có giá trị "VALID" => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK do không có chứng từ thuộc nhóm bắt buộc thì trả chuỗi rỗng "".
-- Nếu BLANK do thiếu dữ liệu chữ ký và con dấu thì liệt kê chính xác tên file bị thiếu dữ liệu.
+- Nếu REVIEW do không có chứng từ thuộc nhóm bắt buộc thì trả chuỗi rỗng "".
+- Nếu REVIEW do thiếu dữ liệu chữ ký và con dấu thì liệt kê chính xác tên file bị thiếu dữ liệu.
 - Nếu NG do thiếu loại chứng từ bắt buộc thì liệt kê các file hiện có thuộc nhóm chứng từ bắt buộc đã dùng để kết luận.
 - Nếu NG do có giá trị "INVALID" thì liệt kê chính xác tên file có dữ liệu chữ ký và con dấu không hợp lệ.
 - Nếu OK thì trả chuỗi rỗng "".
@@ -45,7 +45,7 @@ Bước 3: Kiểm tra
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả kiểm tra chữ ký và con dấu:
-- Nếu BLANK do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do thiếu loại chứng từ bắt buộc => nêu rõ thiếu loại chứng từ nào, cần kiểm tra lại.
 - Nếu NG do có giá trị "INVALID" => nêu rõ loại chứng từ nào, file nào có chữ ký và con dấu không hợp lệ, cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Chữ ký và con dấu đã hoàn toàn hợp lệ."
@@ -79,7 +79,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Chữ ký và con dấu",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }
@@ -90,7 +90,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 - Không markdown. Không giải thích thêm ngoài JSON.
 - Các field phải đúng tên, đúng schema. Không thêm bất kỳ field nào ngoài schema đã cho.
 - Danh sách tên file phải loại bỏ trùng lặp, chỉ tồn tại các tên file là duy nhất, tối đa 10 tên file.
-- CriteriaStatus chỉ được là: "OK" hoặc "NG" hoặc "BLANK".';
+- CriteriaStatus chỉ được là: "OK" hoặc "NG" hoặc "REVIEW".';
 
 UPDATE ONT1042
 SET PromptBussiness = @PromptBussiness, 

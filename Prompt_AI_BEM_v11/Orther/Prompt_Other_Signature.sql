@@ -23,20 +23,20 @@ Bước 2: Kiểm tra theo loại hồ sơ
 3. Vì dữ liệu hiện tại không có trường địa chỉ/quốc gia của PO, không được tự suy diễn trong nước hay nước ngoài. Chỉ kiểm tra các chứng từ thực tế đã được cung cấp theo rule.
 
 Bước 3: Kết luận
-1. Thiếu dữ liệu chữ ký/con dấu trên chứng từ cần kiểm tra => CriteriaStatus = "BLANK".
+1. Thiếu dữ liệu chữ ký/con dấu trên chứng từ cần kiểm tra => CriteriaStatus = "REVIEW".
 2. Không có BLANK nhưng có ít nhất một giá trị INVALID => CriteriaStatus = "NG".
 3. Tất cả chứng từ cần kiểm tra có giá trị VALID => CriteriaStatus = "OK".
-4. Không tồn tại PO hoặc không tồn tại INVOICE/COMMERCIALINVOICE phù hợp => CriteriaStatus = "BLANK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. Không tồn tại PO hoặc không tồn tại INVOICE/COMMERCIALINVOICE phù hợp => CriteriaStatus = "REVIEW".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file thiếu dữ liệu chữ ký/con dấu; nếu thiếu hẳn loại chứng từ thì trả chuỗi rỗng "".
+- REVIEW: liệt kê file thiếu dữ liệu chữ ký/con dấu; nếu thiếu hẳn loại chứng từ thì trả chuỗi rỗng "".
 - NG: liệt kê file có chữ ký/con dấu không hợp lệ.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file thiếu dữ liệu hoặc thiếu hẳn chứng từ phù hợp.
+- REVIEW: nêu rõ loại chứng từ và file thiếu dữ liệu hoặc thiếu hẳn chứng từ phù hợp.
 - NG: nêu rõ loại chứng từ và file có chữ ký/con dấu không hợp lệ.
 - OK: ghi "Chữ ký và con dấu đã hoàn toàn hợp lệ."
 - Description phải phù hợp với CriteriaStatus.';
@@ -72,7 +72,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Chữ ký và con dấu",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

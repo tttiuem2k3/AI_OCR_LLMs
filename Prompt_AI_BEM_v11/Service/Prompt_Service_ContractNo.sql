@@ -31,24 +31,24 @@ Bước 2: So sánh
 6. Số hợp đồng phải khớp sau khi tách danh sách, mở rộng tiền tố và chuẩn hóa (2 số hợp đồng khớp nhau trên 80% ký tự được coi là OK)
 7. Nếu có ít nhất một số hợp đồng trên CONTRACT không tồn tại trong INSPECTION, hoặc ngược lại, thì CriteriaStatus = "NG".
 8. Nếu ContractSet và AcceptanceSet khớp nhau đầy đủ sau chuẩn hóa thì CriteriaStatus = "OK".
-9. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+9. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 Bước 3: Trả kết quả
 Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 1. Ưu tiên kiểm tra thiếu dữ liệu trước:
-   - Thiếu chứng từ CONTRACT cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-   - Thiếu INSPECTION cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-   - Có chứng từ CONTRACT, INSPECTION nhưng thiếu trường Số hợp đồng => CriteriaStatus = "BLANK".
+   - Thiếu chứng từ CONTRACT cần dùng để đối chiếu => CriteriaStatus = "REVIEW".
+   - Thiếu INSPECTION cần dùng để đối chiếu => CriteriaStatus = "REVIEW".
+   - Có chứng từ CONTRACT, INSPECTION nhưng thiếu trường Số hợp đồng => CriteriaStatus = "REVIEW".
 2. Chỉ khi đủ dữ liệu bắt buộc mới được kiểm tra sai lệch:
    - Nếu số hợp đồng giữa ContractSet và AcceptanceSet không khớp đầy đủ => CriteriaStatus = "NG".
 3. Nếu đủ dữ liệu và tất cả số hợp đồng giữa ContractSet và AcceptanceSet khớp nhau => CriteriaStatus = "OK".
 4. Không được trả CriteriaStatus = "NG" trong trường hợp nguyên nhân chính là thiếu chứng từ hoặc thiếu dữ liệu bắt buộc.
-5. Không được đưa nội dung thiếu chứng từ/thiếu dữ liệu vào Description của trạng thái "NG". Nếu có thiếu chứng từ/thiếu dữ liệu thì phải kết luận "BLANK".
+5. Không được đưa nội dung thiếu chứng từ/thiếu dữ liệu vào Description của trạng thái "NG". Nếu có thiếu chứng từ/thiếu dữ liệu thì phải kết luận "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK do thiếu dữ liệu số hợp đồng trong file có sẵn thì liệt kê chính xác tên file bị thiếu dữ liệu số hợp đồng.
-- Nếu BLANK do thiếu hẳn loại chứng từ CONTRACT hoặc thiếu hẳn chứng từ INSPECTION thì FileName trả chuỗi rỗng "".
+- Nếu REVIEW do thiếu dữ liệu số hợp đồng trong file có sẵn thì liệt kê chính xác tên file bị thiếu dữ liệu số hợp đồng.
+- Nếu REVIEW do thiếu hẳn loại chứng từ CONTRACT hoặc thiếu hẳn chứng từ INSPECTION thì FileName trả chuỗi rỗng "".
 - Nếu NG thì liệt kê chính xác tên file có số hợp đồng không khớp hoặc liên quan trực tiếp đến sai lệch.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -59,12 +59,12 @@ Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hợp đồng:
-- Nếu BLANK do thiếu CONTRACT, INSPECTION hoặc thiếu dữ liệu số hợp đồng => nêu rõ thiếu loại chứng từ nào hoặc file nào thiếu dữ liệu, cần kiểm tra lại.
+- Nếu REVIEW do thiếu CONTRACT, INSPECTION hoặc thiếu dữ liệu số hợp đồng => nêu rõ thiếu loại chứng từ nào hoặc file nào thiếu dữ liệu, cần kiểm tra lại.
 - Nếu NG do không khớp số hợp đồng => nêu rõ không khớp số hợp đồng giữa CONTRACT file nào với INSPECTION file nào, cần kiểm tra lại.
 - Nếu OK do đối chiếu khớp => nêu ngắn gọn rằng "Số hợp đồng đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.
 - Nếu CriteriaStatus = "NG" thì Description không được nói thiếu chứng từ hoặc thiếu dữ liệu.
-- Nếu phát hiện thiếu chứng từ hoặc thiếu dữ liệu bắt buộc thì CriteriaStatus phải là "BLANK", không phải "NG".';
+- Nếu phát hiện thiếu chứng từ hoặc thiếu dữ liệu bắt buộc thì CriteriaStatus phải là "REVIEW", không phải "NG".';
 --- Dữ liệu đầu vào 
 DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {
@@ -90,7 +90,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hợp đồng",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

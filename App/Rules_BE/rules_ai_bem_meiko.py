@@ -22,6 +22,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
+from .compare_execution_mode import (
+	AUTO,
+	RULE_ENGINE,
+	normalize_compare_execution_mode,
+	should_run_rule_engine,
+)
+from .nvl_rule_engine import execute_nvl_rule_engine, run_rule_engine_step
+
 
 ENABLE_AI_LLMS_DEBUG_TEXT_LOGS = False
 
@@ -54,7 +62,7 @@ DNTT_TYPE_CATALOG: dict = {
 	"DICHVU": {"label": "Dịch vụ", "aliases": ["Dịch vụ", "Dich vu"]},
 	"MAYMOC": {"label": "Máy móc", "aliases": ["Máy móc", "May moc"]},
 	"XAYDUNG": {"label": "Xây dựng", "aliases": ["Xây dựng", "Xay dung"]},
-	"NGUYENVATLIEU": {"label": "Nguyên vật liệu", "aliases": ["Nguyên vật liệu", "Nguyen vat lieu"]},
+	"NGUYENVATLIEU": {"label": "Nguyên vật liệu", "aliases": ["Nguyên vật liệu", "Nguyen vat lieu", "BEM_AGENT_BEMF2000_WAREHOUSE"]},
 	"KHAC": {"label": "Khác", "aliases": ["Khác", "Khac"]},
 }
 
@@ -78,17 +86,17 @@ INSTALLMENT_CATALOG: dict = {
 
 CRITERION_NAME_CATALOG: dict = {
 	"TENNHACUNGCAP": {"label": "Tên nhà cung cấp", "aliases": ["Tên nhà cung cấp", "Ten nha cung cap", "Tên NCC", "Ten NCC"]},
-	"SOHOADON": {"label": "Số hóa đơn", "aliases": ["Số hóa đơn", "So hoa don"]},
-	"NGAYHOADON": {"label": "Ngày hóa đơn", "aliases": ["Ngày hóa đơn", "Ngay hoa don"]},
+	"SOHOADON": {"label": "Số hóa đơn", "aliases": ["Số hóa đơn", "So hoa don", "CRITERIA_INVOICE_NO"]},
+	"NGAYHOADON": {"label": "Ngày hóa đơn", "aliases": ["Ngày hóa đơn", "Ngay hoa don", "CRITERIA_INVOICE_DATE"]},
 	"SOTIEN": {"label": "Số tiền", "aliases": ["Số tiền", "So tien"]},
 	"SOTIENTRENTOKHAI": {"label": "Số tiền trên tờ khai", "aliases": ["Số tiền trên tờ khai", "So tien tren to khai"]},
-	"LOAITIEN": {"label": "Loại tiền", "aliases": ["Loại tiền", "Loai tien"]},
+	"LOAITIEN": {"label": "Loại tiền", "aliases": ["Loại tiền", "Loai tien", "CRITERIA_CURRENCY"]},
 	"CHUKICONDAU": {"label": "Chữ ký con dấu", "aliases": ["Chữ ký con dấu", "Chu ky con dau", "Chữ ký và con dấu", "Chu ky va con dau"]},
 	"SORINGI": {"label": "Số Ringi", "aliases": ["Số Ringi", "So ringi"]},
 	"SOHOPDONG": {"label": "Số hợp đồng", "aliases": ["Số hợp đồng", "So hop dong"]},
-	"DIEUKIENGIAOHANG": {"label": "Điều kiện giao hàng", "aliases": ["Điều kiện giao hàng", "Dieu kien giao hang"]},
-	"HANTHANHTOAN": {"label": "Hạn thanh toán", "aliases": ["Hạn thanh toán", "Han thanh toan"]},
-	"NGAYHOANTHANHKIEMTRA": {"label": "Ngày hoàn thành kiểm tra", "aliases": ["Ngày hoàn thành kiểm tra", "Ngay hoan thanh kiem tra"]},
+	"DIEUKIENGIAOHANG": {"label": "Điều kiện giao hàng", "aliases": ["Điều kiện giao hàng", "Dieu kien giao hang", "CRITERIA_INCOTERM"]},
+	"HANTHANHTOAN": {"label": "Hạn thanh toán", "aliases": ["Hạn thanh toán", "Han thanh toan", "CRITERIA_PAYMENT_DEADLINE"]},
+	"NGAYHOANTHANHKIEMTRA": {"label": "Ngày hoàn thành kiểm tra", "aliases": ["Ngày hoàn thành kiểm tra", "Ngay hoan thanh kiem tra", "CRITERIA_CHECK_COMPLETED_DATE"]},
 	"SOPO": {"label": "Số PO", "aliases": ["Số PO", "So PO"]},
 }
 
@@ -150,6 +158,20 @@ CRITERION_ALIAS_MAP = _build_alias_map(CRITERION_NAME_CATALOG)
 # ============================================================================
 
 OPTIONAL_COMPARE_DOC_TYPES: set[str] = {"RINGI"}
+
+NVL_OPTIONAL_COMPARE_DOC_TYPES: set[str] = {
+	"COMMERCIALINVOICE",
+	"RINGI",
+	"STATEMENT",
+	"PACKINGLIST",
+}
+
+
+def _optional_compare_doc_types(dntt_type: str) -> set[str]:
+	optional_types = set(OPTIONAL_COMPARE_DOC_TYPES)
+	if str(dntt_type or "").strip() == "NGUYENVATLIEU":
+		optional_types.update(NVL_OPTIONAL_COMPARE_DOC_TYPES)
+	return optional_types
 
 DELIVERY_TERM_DOCUMENT_TYPES: tuple[str, ...] = (
 	"PO", "CUSTOMSHEET", "INVOICE", "COMMERCIALINVOICE",
@@ -652,7 +674,7 @@ MAYMOC_COMPARE_RULES: dict = {
 			"NGAYHOADON": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu ngày hóa đơn."),
 			"SOTIEN": _rule(required_all=["PO", "RINGI", "CONTRACT"]),
 			"LOAITIEN": _rule(required_all=["PO", "RINGI"]),
-			"DIEUKIENGIAOHANG": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu điều kiện giao hàng."),
+			"DIEUKIENGIAOHANG": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua khi so sánh điều kiện giao hàng."),
 			"HANTHANHTOAN": _rule(required_all=["PO"]),
 			"NGAYHOANTHANHKIEMTRA": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu ngày hoàn thành kiểm tra."),
 			"CHUKICONDAU": _skip("Nguồn hình thành là Đặt cọc/trả trước: bỏ qua đối chiếu chữ ký và con dấu."),
@@ -744,14 +766,14 @@ XAYDUNG_COMPARE_RULES: dict = {
 # -----------------------------
 NGUYENVATLIEU_COMPARE_RULES_DEFAULT: dict = {
 	"SOTIEN": _rule(
-		required_all=["CUSTOMSHEET", "RINGI"],
+		required_all=["CUSTOMSHEET"],
 		required_any_groups=[["INVOICE", "COMMERCIALINVOICE", "STATEMENT"]],
 	),
 	"NGAYHOANTHANHKIEMTRA": _rule(
 		required_all=["CUSTOMSHEET"]
 	),
 	"LOAITIEN": _rule(
-		required_all=["CUSTOMSHEET", "PO", "RINGI"],
+		required_all=["CUSTOMSHEET", "PO"],
 		required_any_groups=[["INVOICE", "COMMERCIALINVOICE", "STATEMENT"]],
 	),
 	"DIEUKIENGIAOHANG": _rule(
@@ -767,7 +789,7 @@ NGUYENVATLIEU_COMPARE_RULES_DEFAULT: dict = {
 		required_any_groups=[["INVOICE", "COMMERCIALINVOICE"]],
 	),
 	"TENNHACUNGCAP": _rule(
-		required_all=["CUSTOMSHEET", "PO", "RINGI"],
+		required_all=["CUSTOMSHEET", "PO"],
 		required_any_groups=[["INVOICE", "COMMERCIALINVOICE", "STATEMENT"]],
 	),
 	"NGAYHOADON": _rule(
@@ -782,7 +804,17 @@ NGUYENVATLIEU_COMPARE_RULES_DEFAULT: dict = {
 
 NGUYENVATLIEU_COMPARE_RULES: dict = {
 	"DATCOC_TRATRUOC": {
-		"DEFAULT": NGUYENVATLIEU_COMPARE_RULES_DEFAULT,
+		"DEFAULT": {
+			"SOHOADON": _skip("Với nguồn hình thành Đặt cọc/Trả trước, tiêu chí này được bỏ qua khi đối chiếu."),
+			"NGAYHOADON": _skip("Với nguồn hình thành Đặt cọc/Trả trước, tiêu chí này được bỏ qua khi đối chiếu."),
+			"NGAYHOANTHANHKIEMTRA": _skip("Với nguồn hình thành Đặt cọc/Trả trước, tiêu chí này được bỏ qua khi đối chiếu."),
+			"HANTHANHTOAN": _skip("Với nguồn hình thành Đặt cọc/Trả trước, tiêu chí này được bỏ qua khi đối chiếu."),
+			"SOTIEN": NGUYENVATLIEU_COMPARE_RULES_DEFAULT["SOTIEN"],
+			"LOAITIEN": NGUYENVATLIEU_COMPARE_RULES_DEFAULT["LOAITIEN"],
+			"DIEUKIENGIAOHANG": NGUYENVATLIEU_COMPARE_RULES_DEFAULT["DIEUKIENGIAOHANG"],
+			"CHUKICONDAU": NGUYENVATLIEU_COMPARE_RULES_DEFAULT["CHUKICONDAU"],
+			"TENNHACUNGCAP": NGUYENVATLIEU_COMPARE_RULES_DEFAULT["TENNHACUNGCAP"],
+		},
 	},
 	"KETHUA_CONGNO": {
 		"DEFAULT": NGUYENVATLIEU_COMPARE_RULES_DEFAULT,
@@ -1059,10 +1091,10 @@ def _extract_doc_type_set(text: str) -> set[str]:
 def _doc_type_vi_name(code: str) -> str:
 	"""Đổi mã SectionType thành tên chứng từ tiếng Việt dùng trong thông báo client."""
 	mapping = {
-		"INVOICE": "Hóa đơn",
+		"INVOICE": "Hóa đơn (VAT)",
 		"COMMERCIALINVOICE": "Hóa đơn thương mại",
 		"CUSTOMSHEET": "Tờ khai hải quan",
-		"PO": "Yêu cầu mua hàng(PO)",
+		"PO": "Yêu cầu mua hàng (PO)",
 		"CONTRACT": "Hợp đồng",
 		"RINGI": "RINGI",
 		"INSPECTION": "Biên bản nghiệm thu",
@@ -1089,19 +1121,33 @@ def _missing_required_all_empty_input_description(criterion_name: str, doc_types
 	return f"Thiếu các loại chứng từ bắt buộc để đối chiếu {criteria_label} là {missing_vi}"
 
 
-def _missing_any_required_groups(detected_types: set[str], required_any_groups: list[list[str]]) -> list[list[str]]:
+def _missing_any_required_groups(
+	detected_types: set[str],
+	required_any_groups: list[list[str]],
+	optional_document_types: set[str] | None = None,
+) -> list[list[str]]:
 	"""Trả các nhóm OR chưa có bất kỳ chứng từ hợp lệ nào xuất hiện."""
+	optional_types = {
+		_normalize_doc_type(item)
+		for item in (optional_document_types or OPTIONAL_COMPARE_DOC_TYPES)
+		if _normalize_doc_type(item)
+	}
 	missing_groups: list[list[str]] = []
 	for grp in (required_any_groups or []):
-		norm_grp = [
+		all_group_types = [
 			_normalize_doc_type(x)
 			for x in (grp or [])
-			if _normalize_doc_type(x) and _normalize_doc_type(x) not in OPTIONAL_COMPARE_DOC_TYPES
+			if _normalize_doc_type(x)
 		]
-		if not norm_grp:
+		if not all_group_types or any(doc in detected_types for doc in all_group_types):
 			continue
-		if not any(doc in detected_types for doc in norm_grp):
-			missing_groups.append(norm_grp)
+		required_group_types = [
+			document_type
+			for document_type in all_group_types
+			if document_type not in optional_types
+		]
+		if required_group_types:
+			missing_groups.append(required_group_types)
 	return missing_groups
 
 
@@ -1302,7 +1348,7 @@ def _build_signature_fallback_result(content_text: str, criterion_name: str) -> 
 		return {
 			"criteria": {
 				"CriteriaName": (criterion_name or "Chữ ký và con dấu").strip(),
-				"CriteriaStatus": "BLANK",
+				"CriteriaStatus": "REVIEW",
 				"FileName": file_names,
 				"Description": f"Không có dữ liệu chữ ký và con dấu để đối chiếu.{note}",
 			}
@@ -1326,7 +1372,7 @@ def _build_signature_fallback_result(content_text: str, criterion_name: str) -> 
 		return {
 			"criteria": {
 				"CriteriaName": (criterion_name or "Chữ ký và con dấu").strip(),
-				"CriteriaStatus": "BLANK",
+				"CriteriaStatus": "REVIEW",
 				"FileName": file_names,
 				"Description": f"Không có dữ liệu chữ ký và con dấu để đối chiếu.{note}",
 			}
@@ -1352,7 +1398,7 @@ def _build_signature_fallback_result(content_text: str, criterion_name: str) -> 
 	if invalid_types:
 		status = "NG"
 	elif blank_types:
-		status = "BLANK"
+		status = "REVIEW"
 	else:
 		status = "OK"
 
@@ -1403,7 +1449,12 @@ def _extract_doc_type_from_line(line: str) -> str:
 # và tạo một số kết quả nghiệp vụ có thể xử lý deterministic.
 # ============================================================================
 
-def _filter_compare_input_by_required_docs(text: str, required_all: list[str], required_any_groups: list[list[str]]) -> tuple[str, int]:
+def _filter_compare_input_by_required_docs(
+	text: str,
+	required_all: list[str],
+	required_any_groups: list[list[str]],
+	optional_document_types: set[str] | None = None,
+) -> tuple[str, int]:
 	# Trước khi gửi LLM đối chiếu, chỉ giữ các block OCR thuộc chứng từ rule yêu cầu.
 	# Việc này giúp prompt ngắn hơn, giảm nhiễu và giảm khả năng LLM so sánh nhầm nguồn.
 	"""Lọc bỏ các dòng chứng từ thừa trước khi gửi LLM ở nhánh Đối chiếu.
@@ -1428,7 +1479,7 @@ def _filter_compare_input_by_required_docs(text: str, required_all: list[str], r
 				allowed_types.add(norm)
 
 	# Giữ lại các chứng từ optional nếu chúng xuất hiện trong input (không ép buộc, không loại bỏ).
-	allowed_types.update(OPTIONAL_COMPARE_DOC_TYPES)
+	allowed_types.update(optional_document_types or OPTIONAL_COMPARE_DOC_TYPES)
 
 	if not allowed_types:
 		return src, 0
@@ -1672,6 +1723,8 @@ def _is_public_holiday(date_value: datetime, setting: dict) -> bool:
 			continue
 		start = min(from_date.date(), to_date.date())
 		end = max(from_date.date(), to_date.date())
+		if (end - start).days > 31:
+			continue
 		if start <= current <= end:
 			return True
 	return False
@@ -1715,7 +1768,7 @@ def _normalize_delivery_term_lookup_text(value: object) -> str:
 		folded_characters.append(character)
 		previous_base_is_latin = unicodedata.name(character, "").startswith("LATIN ")
 	folded_text = unicodedata.normalize("NFC", "".join(folded_characters))
-	with_normalized_separators = re.sub(r"[-_.()]+", " ", folded_text.upper())
+	with_normalized_separators = re.sub(r"[-_,.()]+", " ", folded_text.upper())
 	return " ".join(with_normalized_separators.split())
 
 
@@ -2112,6 +2165,12 @@ def _delivery_term_file_names(records: list[dict], limit: int = 10) -> str:
 			break
 	return ", ".join(file_names)
 
+
+def _delivery_term_record_label(record: dict) -> str:
+	file_name = str(record.get("file_name") or "").strip()
+	doc_label = _doc_type_vi_name(record.get("document_type"))
+	return f"{doc_label} ({file_name})" if file_name else doc_label
+
 def _build_delivery_term_result(content_text: str, criterion_name: str) -> dict:
 	"""Đối chiếu điều kiện giao hàng hoàn toàn bằng code và tạo criteria trả client."""
 	criteria_name = str(criterion_name or "").strip() or "Điều kiện giao hàng"
@@ -2248,8 +2307,8 @@ def _build_delivery_term_result(content_text: str, criterion_name: str) -> dict:
 				"FileName": _delivery_term_file_names([left, right]),
 				"Description": (
 					"Điều kiện giao hàng không khớp: "
-					f'{_doc_type_vi_name(left["document_type"])} = {_format_delivery_term(left["term"])}; '
-					f'{_doc_type_vi_name(right["document_type"])} = {_format_delivery_term(right["term"])}.'
+					f'{_delivery_term_record_label(left)} = {_format_delivery_term(left["term"])}; '
+					f'{_delivery_term_record_label(right)} = {_format_delivery_term(right["term"])}.'
 				),
 			}
 		}
@@ -2269,11 +2328,15 @@ def _build_delivery_term_result(content_text: str, criterion_name: str) -> dict:
 			else:
 				status = "thiếu điều kiện giao hàng"
 				invalid_or_missing_records.extend(records)
-			status_parts.append(f"{_doc_type_vi_name(document_type)}: {status}")
+			file_text = _delivery_term_file_names(records)
+			if file_text and status != "hợp lệ":
+				status_parts.append(f"{_doc_type_vi_name(document_type)} ({file_text}): {status}")
+			else:
+				status_parts.append(f"{_doc_type_vi_name(document_type)}: {status}")
 		return {
 			"criteria": {
 				"CriteriaName": criteria_name,
-				"CriteriaStatus": "BLANK",
+				"CriteriaStatus": "REVIEW",
 				"FileName": _delivery_term_file_names(invalid_or_missing_records),
 				"Description": (
 					"Không đủ ít nhất 2 loại chứng từ có điều kiện giao hàng hợp lệ để đối chiếu. "
@@ -2306,9 +2369,9 @@ def _build_delivery_term_result(content_text: str, criterion_name: str) -> dict:
 				"FileName": _delivery_term_file_names([left, right]),
 				"Description": (
 					"Điều kiện giao hàng không khớp: "
-					f'{_doc_type_vi_name(left["document_type"])} = '
+					f'{_delivery_term_record_label(left)} = '
 					f'{_format_delivery_term(left["term"])}; '
-					f'{_doc_type_vi_name(right["document_type"])} = '
+					f'{_delivery_term_record_label(right)} = '
 					f'{_format_delivery_term(right["term"])}.'
 				),
 			}
@@ -2358,8 +2421,21 @@ def _parse_fixed_compare_document_blocks(content_text: str) -> list[dict[str, st
 	return documents
 
 
+PAYMENT_TERM_FAMILY_ALIASES = {
+	"AMS": (r"\bAMS(?:\b|(?=\d))",),
+	"AFTER_BL": (r"\bAFTER\s+B\s*/?\s*L\b",),
+	"AFTER_INVOICE": (r"\bAFTER\s+(?:THE\s+)?INVOICE(?:\s+DATE)?\b",),
+}
+
+PAYMENT_TERM_DISPLAY_TEMPLATES = {
+	"AMS": "AMS{days}",
+	"AFTER_BL": "{days} AFTER B/L",
+	"AFTER_INVOICE": "{days} AFTER INVOICE",
+}
+
+
 def _parse_payment_term_key(value: object) -> tuple[str, int] | None:
-	"""Chuẩn hóa PaymentTerm về (AMS|AFTER_BL, số ngày)."""
+	"""Chuẩn hóa PaymentTerm về (family, số ngày) theo catalog alias."""
 	text = " ".join(str(value or "").upper().split())
 	if not text:
 		return None
@@ -2371,11 +2447,18 @@ def _parse_payment_term_key(value: object) -> tuple[str, int] | None:
 	if day_count <= 0:
 		return None
 
-	is_ams = "AMS" in text
-	is_after_bl = re.search(r"\bAFTER\s+B\s*/?\s*L\b", text) is not None
-	if is_ams == is_after_bl:
+	matched_families = {
+		family
+		for family, aliases in PAYMENT_TERM_FAMILY_ALIASES.items()
+		if any(re.search(alias, text) is not None for alias in aliases)
+	}
+	if len(matched_families) != 1:
 		return None
-	return ("AMS" if is_ams else "AFTER_BL", day_count)
+	return (next(iter(matched_families)), day_count)
+
+
+def _format_payment_term(term_type: str, day_count: int) -> str:
+	return PAYMENT_TERM_DISPLAY_TEMPLATES[term_type].format(days=day_count)
 
 
 def _parse_payment_anchor_date(value: object) -> datetime | None:
@@ -2410,10 +2493,11 @@ def _collect_xaydung_payment_records(
 	date_field: str,
 	subtype_field: str = "",
 	subtype_tokens: tuple[str, ...] = (),
-) -> tuple[list[tuple[datetime, str]], bool]:
+) -> tuple[list[tuple[datetime, str]], bool, list[str]]:
 	"""Thu thập ngày/file Xây dựng đúng loại chứng từ và loại biên bản."""
 	records: list[tuple[datetime, str]] = []
 	found_matching_document = False
+	invalid_anchor_file_names: list[str] = []
 	for document in documents:
 		if document.get("LOAICHUNGTU") != document_type:
 			continue
@@ -2424,9 +2508,16 @@ def _collect_xaydung_payment_records(
 		found_matching_document = True
 		anchor_date = _parse_payment_anchor_date(document.get(date_field))
 		if anchor_date is None:
+			file_name = str(document.get("TENFILE") or "").strip()
+			if (
+				file_name
+				and file_name not in invalid_anchor_file_names
+				and len(invalid_anchor_file_names) < 10
+			):
+				invalid_anchor_file_names.append(file_name)
 			continue
 		records.append((anchor_date, str(document.get("TENFILE") or "").strip()))
-	return records, found_matching_document
+	return records, found_matching_document, invalid_anchor_file_names
 
 
 def _build_xaydung_payment_source_from_records(
@@ -2435,15 +2526,22 @@ def _build_xaydung_payment_source_from_records(
 	found_matching_document: bool,
 	missing_document_description: str,
 	transform_date: Callable[[datetime], datetime] | None = None,
+	invalid_file_names: list[str] | None = None,
+	invalid_date_description: str = "Không có ngày mốc hợp lệ từ chứng từ bắt buộc.",
 ) -> dict:
 	"""Tạo object DueDate/FileName/Description từ record Xây dựng đã chọn."""
 	if not records:
 		description = (
-			"Không có ngày mốc hợp lệ từ chứng từ bắt buộc."
+			invalid_date_description
 			if found_matching_document
 			else missing_document_description
 		)
-		return {"DueDate": None, "FileName": "", "Description": description}
+		return {
+			"DueDate": None,
+			"FileName": ", ".join((invalid_file_names or [])[:10]),
+			"Description": description,
+			"CriteriaStatus": "REVIEW" if found_matching_document else "NG",
+		}
 
 	due_dates: list[datetime] = []
 	file_names: list[str] = []
@@ -2514,7 +2612,7 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			"CONTRACT",
 			"có Ngày hợp đồng",
 		)
-		records, found = _collect_xaydung_payment_records(
+		records, found, invalid_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="CONTRACT",
 			date_field="NGAYHOPDONG",
@@ -2523,6 +2621,11 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			records,
 			found_matching_document=found,
 			missing_document_description=missing_description,
+			invalid_file_names=invalid_files,
+			invalid_date_description=(
+				"Không trích xuất được Ngày hợp đồng để tính hạn thanh toán, "
+				"vui lòng kiểm tra lại file."
+			),
 		)
 
 	if formation_key != "KETHUA_CONGNO":
@@ -2537,19 +2640,20 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			formation_key,
 			installment_key,
 			"HANDOVER",
-			'có Loại biên bản bàn giao vật tư hoặc biên bản bàn giao',
+			'có Loại biên bản bàn giao chứa "bàn giao vật tư"',
 		)
-		records, found = _collect_xaydung_payment_records(
+		records, found, invalid_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="HANDOVER",
 			date_field="NGAYBIENBANBANGIAO",
 			subtype_field="LOAIBIENBANBANGIAO",
-			subtype_tokens=("BANGIAOVATTU","BANGIAO"),
+			subtype_tokens=("BANGIAOVATTU",),
 		)
 		return _build_xaydung_payment_source_from_records(
 			records,
 			found_matching_document=found,
 			missing_document_description=missing_description,
+			invalid_file_names=invalid_files,
 		)
 
 	if installment_key == "TRUOC_LAN_CUOI":
@@ -2557,9 +2661,9 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			formation_key,
 			installment_key,
 			"INSPECTION",
-			'có Loại biên bản nghiệm thu hệ thống',
+			'có Loại biên bản nghiệm thu chứa "nghiệm thu hệ thống"',
 		)
-		records, found = _collect_xaydung_payment_records(
+		records, found, invalid_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="INSPECTION",
 			date_field="NGAYBIENBANNGHIEMTHU",
@@ -2570,6 +2674,7 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			records,
 			found_matching_document=found,
 			missing_document_description=missing_description,
+			invalid_file_names=invalid_files,
 		)
 
 	if installment_key == "LAN_CUOI":
@@ -2577,9 +2682,9 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			formation_key,
 			installment_key,
 			"INSPECTION",
-			'thuộc loại "biên bản nghiệm thu sau một năm" hoặc "biên bản nghiệm thu hệ thống"',
+			'thuộc loại "nghiệm thu sau một năm" hoặc "nghiệm thu hệ thống"',
 		)
-		one_year_records, found_one_year = _collect_xaydung_payment_records(
+		one_year_records, found_one_year, invalid_one_year_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="INSPECTION",
 			date_field="NGAYBIENBANNGHIEMTHU",
@@ -2593,7 +2698,7 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 				missing_document_description=missing_description,
 			)
 
-		system_records, found_system = _collect_xaydung_payment_records(
+		system_records, found_system, invalid_system_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="INSPECTION",
 			date_field="NGAYBIENBANNGHIEMTHU",
@@ -2605,6 +2710,9 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			found_matching_document=found_one_year or found_system,
 			missing_document_description=missing_description,
 			transform_date=_add_one_year_for_payment_deadline,
+			invalid_file_names=list(
+				dict.fromkeys(invalid_one_year_files + invalid_system_files)
+			)[:10],
 		)
 
 	installment_match = re.fullmatch(r"LAN_([0-9]+)", installment_key)
@@ -2613,9 +2721,9 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			formation_key,
 			installment_key,
 			"INSPECTION",
-			'có Loại biên bản nghiệm thu hiện trường',
+			'có Loại biên bản nghiệm thu chứa "nghiệm thu hiện trường"',
 		)
-		records, found = _collect_xaydung_payment_records(
+		records, found, invalid_files = _collect_xaydung_payment_records(
 			documents,
 			document_type="INSPECTION",
 			date_field="NGAYBIENBANNGHIEMTHU",
@@ -2626,6 +2734,7 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 			records,
 			found_matching_document=found,
 			missing_document_description=missing_description,
+			invalid_file_names=invalid_files,
 		)
 
 	return {
@@ -2636,25 +2745,12 @@ def _build_xaydung_payment_deadline_source(prompt_info: dict, content_text: str)
 
 
 def _add_payment_term_to_month_end(anchor_date: datetime, day_count: int) -> datetime:
-	"""Cộng kỳ hạn và đưa kết quả về ngày cuối tháng theo quy ước nghiệp vụ NVL.
-
-	Với kỳ hạn là bội số 30 ngày, coi mỗi 30 ngày là 1 tháng lịch.
-	Ví dụ 01/08/2026 + AMS30 => tháng 09/2026 => 30/09/2026.
-	Với số ngày không chia hết cho 30, cộng số ngày thực tế rồi lấy cuối tháng chứa kết quả.
-	"""
-	if day_count > 0 and day_count % 30 == 0:
-		month_offset = day_count // 30
-		total_month = (anchor_date.year * 12 + (anchor_date.month - 1)) + month_offset
-		target_year, target_month_zero = divmod(total_month, 12)
-		target_month = target_month_zero + 1
+	"""Cộng kỳ hạn rồi đưa về ngày cuối tháng đến hạn."""
+	shifted = anchor_date + timedelta(days=day_count)
+	if shifted.month == 12:
+		next_month = datetime(shifted.year + 1, 1, 1)
 	else:
-		shifted = anchor_date + timedelta(days=day_count)
-		target_year, target_month = shifted.year, shifted.month
-
-	if target_month == 12:
-		next_month = datetime(target_year + 1, 1, 1)
-	else:
-		next_month = datetime(target_year, target_month + 1, 1)
+		next_month = datetime(shifted.year, shifted.month + 1, 1)
 	return next_month - timedelta(days=1)
 
 
@@ -2676,7 +2772,10 @@ def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 		return {
 			"DueDate": None,
 			"FileName": "",
-			"Description": "Không tìm thấy điều khoản thanh toán AMS hoặc AFTER B/L hợp lệ trong chứng từ PO",
+			"Description": (
+				"Không tìm thấy điều khoản thanh toán AMS, AFTER B/L hoặc AFTER INVOICE "
+				"hợp lệ trong chứng từ PO"
+			),
 		}
 
 	max_count = max(term_counts.values())
@@ -2694,31 +2793,47 @@ def _build_nguyenvatlieu_payment_deadline_source(content_text: str) -> dict:
 		return {
 			"DueDate": None,
 			"FileName": ", ".join(file_names),
-			"Description": "Có nhiều điều khoản thanh toán khác nhau",
+			"Description": "Có nhiều điều khoản thanh toán khác nhau: "
+			+ ", ".join(
+				_format_payment_term(term_type, days)
+				for term_type, days in sorted(term_counts)
+			)
+			+ ".",
 		}
 
 	term_type, day_count = next(iter(majority_terms))
-	payment_term_text = f"AMS{day_count}" if term_type == "AMS" else f"{day_count} AFTER B/L"
+	payment_term_text = _format_payment_term(term_type, day_count)
 	if term_type == "AMS":
 		anchor_doc_types = {"CUSTOMSHEET"}
-		anchor_field = "NGAYHANGDEN"
-		missing_description = "Không tìm thấy Ngày hàng đến hợp lệ của chứng từ CUSTOMSHEET"
+		anchor_fields = ("NGAYHANGDEN", "ARRIVALDATE")
+		missing_description = "Không tìm thấy Ngày hàng đến hợp lệ của chứng từ Tờ khai hải quan"
 	else:
 		anchor_doc_types = {"INVOICE", "COMMERCIALINVOICE"}
-		anchor_field = "NGAYHOADON"
-		missing_description = "Không tìm thấy Ngày hóa đơn hợp lệ của chứng từ INVOICE hoặc COMMERCIALINVOICE"
+		anchor_fields = ("NGAYHOADON",)
+		missing_description = "Không tìm thấy Ngày hóa đơn hợp lệ của chứng từ Hóa đơn hoặc Hóa đơn thương mại"
 
 	anchor_records: list[tuple[datetime, str]] = []
+	invalid_anchor_file_names: list[str] = []
 	for document in documents:
 		if document.get("LOAICHUNGTU") not in anchor_doc_types:
 			continue
-		anchor_date = _parse_payment_anchor_date(document.get(anchor_field))
+		anchor_date = None
+		for anchor_field in anchor_fields:
+			anchor_date = _parse_payment_anchor_date(document.get(anchor_field))
+			if anchor_date is not None:
+				break
 		if anchor_date is None:
+			file_name = str(document.get("TENFILE") or "").strip()
+			if file_name and file_name not in invalid_anchor_file_names:
+				invalid_anchor_file_names.append(file_name)
 			continue
 		anchor_records.append((anchor_date, str(document.get("TENFILE") or "").strip()))
 
 	if not anchor_records:
-		return {"DueDate": None, "FileName": "", "Description": missing_description}
+		file_name = ", ".join(invalid_anchor_file_names)
+		if file_name:
+			missing_description = f"{missing_description}: {file_name}."
+		return {"DueDate": None, "FileName": file_name, "Description": missing_description}
 
 	due_dates: list[datetime] = []
 	due_date_files: dict[str, list[str]] = {}
@@ -2807,10 +2922,13 @@ def _build_payment_deadline_result(
 
 	due_dates = _parse_compare_dates(due_date_raw)
 	if not due_dates:
+		missing_due_date_status = str(source_obj.get("CriteriaStatus") or "").strip().upper()
+		if missing_due_date_status not in {"NG", "REVIEW"}:
+			missing_due_date_status = "NG"
 		return {
 			"criteria": {
 				"CriteriaName": (criterion_name or "Hạn thanh toán").strip(),
-				"CriteriaStatus": "NG",
+				"CriteriaStatus": missing_due_date_status,
 				"FileName": file_name,
 				"Description": description,
 				"DueDateAI": None,
@@ -3006,29 +3124,38 @@ def _normalize_sections_master_first(sections: list) -> list:
 	return normalized
 
 
+def _filter_usable_extract_sections(sections: list) -> list:
+	"""Loại section không có loại chứng từ hợp lệ hoặc không có detail sử dụng được."""
+	usable_sections: list[dict] = []
+	for section in (sections or []):
+		if not isinstance(section, dict):
+			continue
+		master = section.get("master")
+		if not isinstance(master, dict):
+			continue
+		section_type = _normalize_doc_type(master.get("SectionType"))
+		if section_type not in EXTRACT_SECTION_RULES:
+			continue
+		details = section.get("details")
+		if not isinstance(details, list) or not any(isinstance(detail, dict) for detail in details):
+			continue
+		master["SectionType"] = section_type
+		usable_sections.append(section)
+	return usable_sections
+
+
 def _normalize_extract_section_type_by_filename(sections: list, file_name: str) -> list:
 	"""Ép và lọc SectionType theo các loại được prefix tên file cho phép."""
-	name_upper = Path(str(file_name or "").strip()).name.upper()
-	if name_upper.startswith(("IV_PL", "IV-PL", "INV_PL", "IN_PL", "IV.PL")):
-		allowed_types = {"INVOICE", "PACKINGLIST"}
-		type_replacements = {"COMMERCIALINVOICE": "INVOICE"}
-	elif name_upper.startswith("COM_PL"):
-		allowed_types = {"COMMERCIALINVOICE", "PACKINGLIST"}
-		type_replacements = {"INVOICE": "COMMERCIALINVOICE"}
-	elif name_upper.startswith("PL"):
-		allowed_types = {"PACKINGLIST"}
-		type_replacements = {}
-	elif name_upper.startswith("INSPEC_"):
-		allowed_types = {"INSPECTION"}
-		type_replacements = {}
-	elif name_upper.startswith(("IN", "IV", "INV")):
-		allowed_types = {"INVOICE"}
-		type_replacements = {"COMMERCIALINVOICE": "INVOICE"}
-	elif name_upper.startswith("COM"):
-		allowed_types = {"COMMERCIALINVOICE"}
-		type_replacements = {"INVOICE": "COMMERCIALINVOICE"}
-	else:
+	resolved_doc_types = _resolve_extract_doc_types_by_filename(file_name)
+	if not resolved_doc_types or EXTRACT_UNMAPPED_DOC_TYPE in resolved_doc_types:
 		return sections
+
+	allowed_types = set(resolved_doc_types)
+	type_replacements: dict[str, str] = {}
+	if "INVOICE" in allowed_types and "COMMERCIALINVOICE" not in allowed_types:
+		type_replacements["COMMERCIALINVOICE"] = "INVOICE"
+	elif "COMMERCIALINVOICE" in allowed_types and "INVOICE" not in allowed_types:
+		type_replacements["INVOICE"] = "COMMERCIALINVOICE"
 
 	filtered_sections = []
 	for section in (sections or []):
@@ -3056,6 +3183,96 @@ CONTRACT_EXTRACT_FIELDS: tuple[str, ...] = (
 	"PaymentTerm",
 	"Amount",
 )
+
+EXTRACT_SECTION_RULES: dict[str, dict[str, object]] = {
+	"INVOICE": {
+		"key": "VoucherNo",
+		"fields": ["VoucherNo", "VoucherDate", "SupplierName", "DeliveryTerm", "Currency", "Amount"],
+	},
+	"COMMERCIALINVOICE": {
+		"key": "VoucherNo",
+		"fields": ["VoucherNo", "VoucherDate", "SupplierName", "DeliveryTerm", "Currency", "Amount"],
+	},
+	"CUSTOMSHEET": {
+		"key": "DeclarationNo",
+		"fields": [
+			"DeclarationNo",
+			"ClearanceStatus",
+			"SupplierName",
+			"StagingArea",
+			"ArrivalDate",
+			"VoucherNo",
+			"VoucherDate",
+			"DeliveryTerm",
+			"Currency",
+			"Amount",
+			"Description",
+			"ClearanceDate",
+		],
+	},
+	"PO": {
+		"key": "ContractNo",
+		"fields": [
+			"ContractNo",
+			"OrderDate",
+			"RingiNo",
+			"SupplierName",
+			"Currency",
+			"DeliveryTerm",
+			"PaymentTerm",
+			"Amount",
+		],
+	},
+	"CONTRACT": {
+		"key": "ContractNo",
+		"fields": list(CONTRACT_EXTRACT_FIELDS),
+	},
+	"RINGI": {
+		"key": "RingiNo",
+		"fields": ["RingiNo", "SupplierName", "PaymentTerm", "Currency", "Amount", "ApprovalLast"],
+	},
+	"INSPECTION": {
+		"key": "ContractNo",
+		"fields": [
+			"ContractNo",
+			"AcceptanceDate",
+			"InspectionType",
+			"SupplierName",
+			"Currency",
+			"Amount",
+			"ApprovalLast",
+			"RingiNo",
+		],
+	},
+	"HANDOVER": {
+		"key": "ContractNo",
+		"fields": [
+			"ContractNo",
+			"HandoverDate",
+			"HandoverType",
+			"SupplierName",
+			"RingiNo",
+			"Currency",
+			"Amount",
+		],
+	},
+	"STATEMENT": {
+		"key": "ListNo",
+		"fields": ["ListNo", "VoucherNo", "VoucherDate", "SupplierName", "Currency", "Amount"],
+	},
+	"BILL": {
+		"key": "BillNo",
+		"fields": ["BillNo", "BillDate", "SupplierName", "GoodsName", "Currency"],
+	},
+	"PACKINGLIST": {
+		"key": "PackingListNo",
+		"fields": ["PackingListNo", "PackingListDate", "SupplierName", "GoodsName", "Quantity"],
+	},
+	"OTHER": {
+		"key": "VoucherName",
+		"fields": ["VoucherName", "SupplierName", "Currency", "Amount", "Description"],
+	},
+}
 
 def _is_contract_null_value(value: object) -> bool:
 	return value is None or (isinstance(value, str) and not value.strip())
@@ -3136,95 +3353,7 @@ def _merge_sections_by_rules(sections: list) -> list:
 	# Gộp output từ nhiều chunk theo SectionType và key nghiệp vụ của từng chứng từ.
 	# Đây là bước chống trùng, bù field thiếu và đánh lại OrderNo trước khi trả API.
 	# Gộp các section theo SectionType và rule chi tiết cho từng loại chứng từ.
-	section_rules = {
-		"INVOICE": {
-			"key": "VoucherNo",
-			"fields": ["VoucherNo", "VoucherDate", "SupplierName", "DeliveryTerm", "Currency", "Amount"],
-		},
-		"COMMERCIALINVOICE": {
-			"key": "VoucherNo",
-			"fields": ["VoucherNo", "VoucherDate", "SupplierName", "DeliveryTerm", "Currency", "Amount"],
-		},
-		"CUSTOMSHEET": {
-			"key": "DeclarationNo",
-			"fields": [
-				"DeclarationNo",
-				"ClearanceStatus",
-				"SupplierName",
-				"StagingArea",
-				"ArrivalDate",
-				"VoucherNo",
-				"VoucherDate",
-				"DeliveryTerm",
-				"Currency",
-				"Amount",
-				"Description",
-				"ClearanceDate",
-			],
-		},
-		"PO": {
-			"key": "ContractNo",
-			"fields": [
-				"ContractNo",
-				"OrderDate",
-				"RingiNo",
-				"SupplierName",
-				"Currency",
-				"DeliveryTerm",
-				"PaymentTerm",
-				"Amount",
-			],
-		},
-		"CONTRACT": {
-			"key": "ContractNo",
-			"fields": list(CONTRACT_EXTRACT_FIELDS),
-		},
-		"RINGI": {
-			"key": "RingiNo",
-			"fields": ["RingiNo", "SupplierName", "PaymentTerm", "Currency", "Amount", "ApprovalLast"],
-		},
-		"INSPECTION": {
-			"key": "ContractNo",
-			"fields": [
-				"ContractNo",
-				"AcceptanceDate",
-				"InspectionType",
-				"SupplierName",
-				"Currency",
-				"Amount",
-				"ApprovalLast",
-				"RingiNo",
-			],
-		},
-		"HANDOVER": {
-			"key": "ContractNo",
-			"fields": [
-				"ContractNo",
-				"HandoverDate",
-				"HandoverType",
-				"SupplierName",
-				"RingiNo",
-				"Currency",
-				"Amount",
-			],
-		},
-		"STATEMENT": {
-			"key": "VoucherNo",
-			"fields": ["VoucherNo", "VoucherDate", "SupplierName", "Currency", "Amount"],
-		},
-		"BILL": {
-			"key": "BillNo",
-			"fields": ["BillNo", "BillDate", "SupplierName", "GoodsName"],
-		},
-		"PACKINGLIST": {
-			"key": "PackingListNo",
-			"fields": ["PackingListNo", "PackingListDate", "SupplierName", "GoodsName", "Quantity"],
-		},
-		"OTHER": {
-			"key": "VoucherName",
-			"fields": ["VoucherName", "SupplierName", "Currency", "Amount", "Description"],
-		},
-	}
+	section_rules = EXTRACT_SECTION_RULES
 
 	def _is_null_value(value: object) -> bool:
 		return value is None or (isinstance(value, str) and not value.strip())
@@ -3649,6 +3778,49 @@ def _resolve_extract_doc_types_by_filename(file_name: str) -> tuple[str, ...]:
 	return (EXTRACT_UNMAPPED_DOC_TYPE,)
 
 
+EXTRACT_FALLBACK_KEY_MESSAGE = "Không trích xuất được dữ liệu!"
+EXTRACT_FALLBACK_REVIEW_MESSAGE = "Vui lòng kiểm tra lại file!"
+
+
+def _build_empty_extract_fallback_sections(file_name: str) -> list[dict]:
+	"""Tạo section tối thiểu theo loại chứng từ khi kết quả trích xuất cuối cùng rỗng."""
+	resolved_doc_types = _resolve_extract_doc_types_by_filename(file_name)
+	doc_types = tuple(
+		"OTHER" if doc_type == EXTRACT_UNMAPPED_DOC_TYPE else doc_type
+		for doc_type in (resolved_doc_types or (EXTRACT_UNMAPPED_DOC_TYPE,))
+	)
+	fallback_sections: list[dict] = []
+	for section_order, doc_type in enumerate(doc_types, start=1):
+		rule = EXTRACT_SECTION_RULES.get(doc_type) or EXTRACT_SECTION_RULES["OTHER"]
+		key_field = str(rule.get("key") or "")
+		fields = [str(field) for field in (rule.get("fields") or [])]
+		detail: dict[str, object] = {}
+		for field in fields:
+			if field == key_field:
+				detail[field] = EXTRACT_FALLBACK_KEY_MESSAGE
+			elif field == "Currency":
+				detail[field] = EXTRACT_FALLBACK_REVIEW_MESSAGE
+			elif doc_type == "PACKINGLIST" and field == "PackingListDate":
+				detail[field] = EXTRACT_FALLBACK_REVIEW_MESSAGE
+			elif field in {"Amount", "Quantity"}:
+				detail[field] = 0
+			else:
+				detail[field] = None
+		detail["OrderNo"] = "1"
+		fallback_sections.append({
+			"master": {
+				"SectionOrder": section_order,
+				"SectionType": doc_type,
+				"SectionTitle": None,
+				"TotalAmount": 0,
+				"TotalCurrency": None,
+				"Signature": "VALID",
+			},
+			"details": [detail],
+		})
+	return fallback_sections
+
+
 def _filter_extract_system_prompt_by_doc_types(
 	system_prompt: str,
 	selected_doc_types: tuple[str, ...],
@@ -3790,6 +3962,24 @@ def _append_prompt_process_log(normalize_txt_path: Path, system_prompt: str, use
 	except Exception as e:
 		logger.warning("Failed to append prompt_process.txt: %s", repr(e))
 
+
+LLM_COMPARE_CRITERIA_STATUSES = frozenset({"OK", "NG", "REVIEW"})
+
+
+def _normalize_llm_compare_result_status(result: dict) -> dict:
+	normalized_result = dict(result)
+	criteria = normalized_result.get("criteria")
+	if not isinstance(criteria, dict):
+		return normalized_result
+
+	normalized_criteria = dict(criteria)
+	status = str(normalized_criteria.get("CriteriaStatus") or "").strip().upper()
+	normalized_criteria["CriteriaStatus"] = (
+		status if status in LLM_COMPARE_CRITERIA_STATUSES else "REVIEW"
+	)
+	normalized_result["criteria"] = normalized_criteria
+	return normalized_result
+
 # ============================================================================
 # LUỒNG ĐIỀU PHỐI CHÍNH CỦA RULES LAYER
 # ----------------------------------------------------------------------------
@@ -3816,6 +4006,8 @@ def process_ai_llms_models_rules(
 	append_response_log_fn: Callable[[object], None],
 	light_cuda_cleanup_fn: Callable[[], None],
 	logger,
+	rule_engine_config_loader_fn: Callable[[str, str], dict | None] | None = None,
+	compare_execution_mode: str = AUTO,
 	ocr_split_max_chars_per_page: int = 10000,
 	ocr_skip_page_min_chars: int = 20000,
 ) -> tuple[object, int]:
@@ -3841,11 +4033,13 @@ def process_ai_llms_models_rules(
 	# 1.3 Chuẩn hóa PromptType về key nội bộ: TRICHXUAT / DOICHIEU.
 	prompt_type_raw = str(prompt_info.get("PromptType") or "").strip()
 	prompt_mode = _normalize_prompt_type(prompt_type_raw)
+	compare_execution_mode = normalize_compare_execution_mode(compare_execution_mode)
 
 	# 1.4 Lấy tên tiêu chí so sánh (chỉ dùng trong mode Đối chiếu).
 	criterion_name = str(prompt_info.get("CriterionName") or "").strip()
 	criterion_key = _normalize_criterion_key(criterion_name)
 	dntt_prompt_key = DNTT_TYPE_ALIAS_MAP.get(_norm_key(prompt_info.get("DnttType") or ""), _norm_key(prompt_info.get("DnttType") or ""))
+	optional_compare_doc_types = _optional_compare_doc_types(dntt_prompt_key)
 
 	# 1.5 Resolve rule nghiệp vụ từ COMPARE_RULES theo trục:
 	#     DnttType -> FormationID -> Installment -> CriterionName.
@@ -3856,13 +4050,118 @@ def process_ai_llms_models_rules(
 	required_any_groups = compare_cfg.get("required_any_groups") or []
 	list_required_effective_ordered = [
 		x for x in list_required_ordered
-		if _normalize_doc_type(x) not in OPTIONAL_COMPARE_DOC_TYPES
+		if _normalize_doc_type(x) not in optional_compare_doc_types
 	]
 	list_required_effective = set(list_required_effective_ordered)
 
 	# 1.7 Cờ điều hướng 2 nhánh chính.
 	is_extract_mode = (prompt_mode == "TRICHXUAT")
 	is_compare_mode = (prompt_mode == "DOICHIEU")
+
+	def _rule_engine_review(description: str) -> tuple[object, int]:
+		result = {
+			"criteria": {
+				"CriteriaName": criterion_name or "Đối chiếu",
+				"CriteriaStatus": "NG",
+				"FileName": "",
+				"Description": description,
+			}
+		}
+		append_response_log_fn(result)
+		light_cuda_cleanup_fn()
+		return result, 200
+
+	if is_compare_mode and dntt_prompt_key == "NGUYENVATLIEU" and compare_cfg.get("skip_compare"):
+		result = {
+			"criteria": {
+				"CriteriaName": criterion_name or "Đối chiếu",
+				"CriteriaStatus": "OK",
+				"FileName": "",
+				"Description": str(compare_cfg.get("skip_message") or "").strip(),
+			}
+		}
+		append_response_log_fn(result)
+		light_cuda_cleanup_fn()
+		return result, 200
+
+	if is_compare_mode and compare_execution_mode == RULE_ENGINE and dntt_prompt_key != "NGUYENVATLIEU":
+		return _rule_engine_review(
+			"Loại ĐNTT hoặc tiêu chí này chưa được cấu hình để chạy bằng Rule Engine."
+		)
+
+	# Rule Engine config chỉ tham gia trong API đối chiếu NVL. API-AI vẫn gửi nguyên
+	# System Prompt/User Prompt; Python tự đọc cấu hình và trả cùng schema cũ.
+	if (
+		is_compare_mode
+		and dntt_prompt_key == "NGUYENVATLIEU"
+		and should_run_rule_engine(compare_execution_mode)
+		and rule_engine_config_loader_fn is not None
+	):
+		def _rule_engine_payment_deadline(prompt: dict, content: str) -> dict:
+			payment_source = _build_nguyenvatlieu_payment_deadline_source(content)
+			return _build_payment_deadline_result(
+				prompt_info=prompt,
+				parsed_llm=payment_source,
+				raw_llm_text="",
+				criterion_name=criterion_name,
+				data_holidays_dir=str(data_holidays_dir or ""),
+			)
+
+		def _run_rule_engine_step() -> tuple[dict | None, dict | None]:
+			try:
+				rule_engine_config = rule_engine_config_loader_fn(dntt_prompt_key, criterion_key)
+			except Exception as error:
+				logger.warning(
+					"Không tải được cấu hình Rule Engine cho %s/%s; dùng luồng đối chiếu cũ: %r",
+					dntt_prompt_key,
+					criterion_key,
+					error,
+				)
+				rule_engine_config = None
+
+			rule_engine_result = execute_nvl_rule_engine(
+				prompt_info=prompt_info,
+				content_text=content_user_process,
+				criterion_name=criterion_name,
+				criterion_key=criterion_key,
+				config=rule_engine_config,
+				payment_deadline_fn=_rule_engine_payment_deadline,
+				delivery_term_fn=_build_delivery_term_result,
+			)
+			return rule_engine_config, rule_engine_result
+
+		rule_engine_config, rule_engine_result = run_rule_engine_step(_run_rule_engine_step)
+		if rule_engine_result is not None:
+			rule_config = rule_engine_config.get("rule") if isinstance(rule_engine_config, dict) else {}
+			llm_policy = str(rule_config.get("LLMPolicy") or "NEVER").upper()
+			criteria = rule_engine_result.get("criteria") if isinstance(rule_engine_result, dict) else {}
+			engine_status = str(criteria.get("CriteriaStatus") or "").upper()
+			# LLM_REVIEW là trạng thái nội bộ cho ambiguity/unknown-value: khi policy
+			# cho phép mới đi tiếp tới LLM. REVIEW nghiệp vụ vẫn trả ngay để LLM
+			# không suy diễn dữ liệu chứng từ đang thiếu.
+			if compare_execution_mode == RULE_ENGINE:
+				append_response_log_fn(rule_engine_result)
+				light_cuda_cleanup_fn()
+				return rule_engine_result, 200
+			if engine_status == "LLM_REVIEW" and llm_policy.startswith("REVIEW_"):
+				logger.info(
+					"Rule Engine trả LLM_REVIEW cho %s/%s; chuyển tiếp LLM theo %s.",
+					dntt_prompt_key,
+					criterion_key,
+					llm_policy,
+				)
+			else:
+				append_response_log_fn(rule_engine_result)
+				light_cuda_cleanup_fn()
+				return rule_engine_result, 200
+		elif compare_execution_mode == RULE_ENGINE:
+			return _rule_engine_review(
+				"Không có cấu hình Mapping/Rule Engine đang hoạt động hoặc cấu hình không hỗ trợ tiêu chí này."
+			)
+	elif is_compare_mode and compare_execution_mode == RULE_ENGINE:
+		return _rule_engine_review(
+			"Không tải được cấu hình Mapping/Rule Engine cho tiêu chí này."
+		)
 
 	# Xây dựng + Hạn thanh toán được tính hoàn toàn bằng Python theo
 	# Nguồn hình thành, Lần thanh toán và loại biên bản tương ứng.
@@ -3920,7 +4219,7 @@ def process_ai_llms_models_rules(
 				"CriteriaName": criteria_label,
 				"CriteriaStatus": "OK",
 				"FileName": "",
-				"Description": f"Vì loại ĐNTT {dntt_label}: Có nguồn hình thành là {formation_label} - Lần thanh toán là {installment_label} nên được bỏ qua khi so sánh tiêu chí {criteria_label}.",
+				"Description": str(compare_cfg.get("skip_message") or "").strip() or f"Vì loại ĐNTT {dntt_label}: Có nguồn hình thành là {formation_label} - Lần thanh toán là {installment_label} nên được bỏ qua khi so sánh tiêu chí {criteria_label}.",
 			}
 		}
 		append_response_log_fn(result)
@@ -3947,7 +4246,7 @@ def process_ai_llms_models_rules(
 
 	# 1.11 Nhánh đặc biệt dùng chung cho Máy móc/Khác/Nguyên vật liệu + tiêu chí Chữ ký và con dấu.
 	#      Không phụ thuộc FormationID/Installment; rơi vào TH1/TH2 sẽ trả kết quả ngay.
-	if is_compare_mode and dntt_prompt_key in {"MAYMOC", "KHAC", "NGUYENVATLIEU"} and criterion_key == "CHUKICONDAU":
+	if is_compare_mode and dntt_prompt_key in {"MAYMOC", "KHAC"} and criterion_key == "CHUKICONDAU":
 		signature_result = _build_signature_compare_result(content_user_process, criterion_name)
 		if signature_result is not None:
 			append_response_log_fn(signature_result)
@@ -4117,7 +4416,9 @@ def process_ai_llms_models_rules(
 		parsed_sections_count = len(merged_sections)
 		merged_sections = _merge_sections_by_rules(merged_sections)
 		merged_sections = _normalize_extract_section_type_by_filename(merged_sections, extract_filename)
-		normalized_sections = _normalize_sections_master_first(merged_sections)
+		normalized_sections = _filter_usable_extract_sections(
+			_normalize_sections_master_first(merged_sections)
+		)
 		result = {"sections": normalized_sections}
 		if not normalized_sections:
 			_append_empty_sections_error_log(
@@ -4130,6 +4431,8 @@ def process_ai_llms_models_rules(
 				result=result,
 				logger=logger,
 			)
+			normalized_sections = _build_empty_extract_fallback_sections(extract_filename)
+			result = {"sections": normalized_sections}
 		response_json_text_pretty = json.dumps(result, ensure_ascii=False, sort_keys=False, indent=2)
 		_append_sections_result_log(sections_txt_path=sections_txt_path, response_json_text=response_json_text_pretty, logger=logger)
 		append_response_log_fn(result)
@@ -4168,12 +4471,16 @@ def process_ai_llms_models_rules(
 				else:
 					effective_required_any_groups = [["COMMERCIALINVOICE", "STATEMENT"]]
 			missing = [x for x in list_required_effective_ordered if x not in detected_types]
-			missing_any_groups = _missing_any_required_groups(detected_types, effective_required_any_groups)
+			missing_any_groups = _missing_any_required_groups(
+				detected_types,
+				effective_required_any_groups,
+				optional_document_types=optional_compare_doc_types,
+			)
 			present_required = sorted([x for x in list_required_effective if x in detected_types])
 			# Check whether any member of the required_any_groups is present
 			presence_any_groups = False
 			for grp in (effective_required_any_groups or []):
-				grp_norm = [x for x in (grp or []) if x and x not in OPTIONAL_COMPARE_DOC_TYPES]
+				grp_norm = [_normalize_doc_type(x) for x in (grp or []) if _normalize_doc_type(x)]
 				if not grp_norm:
 					continue
 				if any(doc in detected_types for doc in grp_norm):
@@ -4235,6 +4542,7 @@ def process_ai_llms_models_rules(
 				compare_user_content,
 				required_all=list(list_required),
 				required_any_groups=effective_required_any_groups,
+				optional_document_types=optional_compare_doc_types,
 			)
 			if removed_extra_lines > 0:
 				logger.info(
@@ -4321,6 +4629,9 @@ def process_ai_llms_models_rules(
 				append_response_log_fn(_build_payment_deadline_log_payload(result, parsed_case2))
 				light_cuda_cleanup_fn()
 				return result, 200
+
+			if parsed_case2 is not None:
+				parsed_case2 = _normalize_llm_compare_result_status(parsed_case2)
 
 			# 3.7 Nếu parse được JSON thì dùng JSON; nếu không thì trả text thô.
 			if (not missing) and (not missing_any_groups):
@@ -4440,6 +4751,8 @@ def process_ai_llms_models_rules(
 
 	try:
 		parsed = json.loads(final_text)
+		if is_compare_mode and isinstance(parsed, dict):
+			parsed = _normalize_llm_compare_result_status(parsed)
 		append_response_log_fn(parsed)
 		light_cuda_cleanup_fn()
 		return parsed, 200

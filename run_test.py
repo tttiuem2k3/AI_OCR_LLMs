@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import os
 import random
@@ -32,7 +32,7 @@ def _load_dotenv(path: str = ".env") -> None:
 
 
 def _get_host_port() -> Tuple[str, int]:
-    host = os.getenv("TEST_HOST", os.getenv("HOST", "192.168.0.134"))
+    host = os.getenv("TEST_HOST", os.getenv("HOST", "192.168.0.148"))
     port = int(os.getenv("TEST_PORT", os.getenv("PORT", "4444")))
     return host, port
 
@@ -44,22 +44,27 @@ def _mock_delay_seconds() -> float:
             return max(0.0, float(raw))
         except Exception:
             pass
-    return random.uniform(2.0, 8.0)
+    return 10.0
 
 
 def _ocr_mock_delay_seconds() -> float:
     raw = os.getenv("TEST_OCR_MOCK_DELAY_SECONDS", os.getenv("TEST_MOCK_DELAY_SECONDS", "")).strip()
     if not raw:
-        return random.uniform(2.0, 8.0)
+        return 5.0
     try:
         return max(0.0, float(raw))
     except Exception:
-        return random.uniform(2.0, 8.0)
+        return 5.0
 
 
 _load_dotenv(".env")
 
 from App.settings_all import get_settings_all  # noqa: E402
+from App.Rules_BE.compare_execution_mode import (  # noqa: E402
+    AUTO,
+    RULE_ENGINE,
+    normalize_compare_execution_mode,
+)
 
 
 settings_all = get_settings_all()
@@ -68,7 +73,10 @@ PROJECT_ROOT = str(Path(settings_all.PROJECT_ROOT).resolve())
 app = Flask(__name__, static_folder=None)
 _train_receive_lock = threading.Lock()
 _request_seq_lock = threading.Lock()
+_mock_llm_state_lock = threading.Lock()
 _request_seq = 0
+_mock_active_model_id = None
+_mock_active_model_name = None
 
 LOG_DIR = Path(PROJECT_ROOT) / "Logs"
 LOG_FILE = LOG_DIR / "app.log"
@@ -322,9 +330,9 @@ COMPARE_SAMPLE_CRITERIA = {
     },
     "Ngày hóa đơn": {
         "CriteriaName": "Ngày hóa đơn",
-        "CriteriaStatus": "OK",
-        "FileName": "",
-        "Description": "Ngày hóa đơn đã hoàn toàn hợp lệ và khớp với dữ liệu đối chiếu.",
+        "CriteriaStatus": "REVIEW",
+        "FileName": "INV-20260122.pdf",
+        "Description": "Không đủ dữ liệu ngày hóa đơn để kết luận, vui lòng kiểm tra lại file.",
     },
     "Tên nhà cung cấp": {
         "CriteriaName": "Tên nhà cung cấp",
@@ -346,14 +354,118 @@ COMPARE_SAMPLE_CRITERIA = {
     },
 }
 
+RULE_ENGINE_MOCK_DNTT_KEY = "nguyenvatlieu"
+RULE_ENGINE_MOCK_CRITERIA = {
+    "sohoadon": "Số hóa đơn",
+    "ngayhoadon": "Ngày hóa đơn",
+    "loaitien": "Loại tiền",
+    "hanthanhtoan": "Hạn thanh toán",
+    "dieukiengiaohang": "Điều kiện giao hàng",
+    "ngayhoanthanhkiemtra": "Ngày hoàn thành kiểm tra",
+}
+MOCK_COMPARE_CRITERIA_STATUSES = frozenset({"OK", "NG", "REVIEW"})
+RULE_ENGINE_PAYMENT_DEADLINE_FILE_NAME = ", ".join((
+    "ToKhaiHQ7N_QDTQ_108454469320 - 2026001227 TQ.xlsx",
+    "ToKhaiHQ7N_QDTQ_108454678400 2026001228 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108454570930 2026001252 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108463781200 2026001253 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108463850720 2026001259 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108481198820 2026001258 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108461107200 2026001260 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108475120500 2026001262 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108460783060 - 2026001263 xanh.xlsx",
+    "ToKhaiHQ7N_QDTQ_108463924440  2026001265 xanh.xlsx",
+))
 
-def _extract_criterion_name(user_prompt: str) -> str:
-    match = re.search(r'"CriterionName"\s*:\s*"([^"]*)"', str(user_prompt or ""), flags=re.IGNORECASE)
+
+def _normalize_mock_directive_key(value: object) -> str:
+    normalized = unicodedata.normalize("NFD", str(value or ""))
+    without_marks = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    without_marks = without_marks.replace("đ", "d").replace("Đ", "D")
+    return "".join(ch for ch in without_marks.lower() if ch.isalnum())
+
+
+def _extract_directive_value(user_prompt: str, field_pattern: str) -> str:
+    match = re.search(
+        rf'["\']?{field_pattern}["\']?\s*[:=]\s*["\']([^"\']*)',
+        str(user_prompt or ""),
+        flags=re.IGNORECASE,
+    )
     return match.group(1).strip() if match else ""
 
 
-def _mock_compare_payload(user_prompt: str) -> dict:
+def _extract_criterion_name(user_prompt: str) -> str:
+    return _extract_directive_value(user_prompt, r"Criterion[\s_-]*Name")
+
+
+def _extract_dntt_type(user_prompt: str) -> str:
+    return _extract_directive_value(user_prompt, r"Dntt[\s_-]*Type")
+
+
+def _mock_rule_engine_ng(criterion_name: str, description: str) -> dict:
+    return {
+        "criteria": {
+            "CriteriaName": criterion_name or "Đối chiếu",
+            "CriteriaStatus": "NG",
+            "FileName": "",
+            "Description": description,
+        }
+    }
+
+
+def _normalize_mock_compare_criteria_status(criteria: dict) -> dict:
+    normalized_criteria = dict(criteria)
+    status = str(normalized_criteria.get("CriteriaStatus") or "").strip().upper()
+    normalized_criteria["CriteriaStatus"] = (
+        status if status in MOCK_COMPARE_CRITERIA_STATUSES else "REVIEW"
+    )
+    return normalized_criteria
+
+
+def _mock_compare_payload(user_prompt: str, compare_execution_mode: str = AUTO) -> dict:
     criterion_name = _extract_criterion_name(user_prompt)
+    if compare_execution_mode == RULE_ENGINE:
+        dntt_key = _normalize_mock_directive_key(_extract_dntt_type(user_prompt))
+        criterion_key = _normalize_mock_directive_key(criterion_name)
+        canonical_criterion_name = RULE_ENGINE_MOCK_CRITERIA.get(criterion_key)
+        if dntt_key != RULE_ENGINE_MOCK_DNTT_KEY:
+            return _mock_rule_engine_ng(
+                criterion_name,
+                "Loại ĐNTT này chưa được cấu hình để chạy bằng Rule Engine mock.",
+            )
+        if canonical_criterion_name is None:
+            return _mock_rule_engine_ng(
+                criterion_name,
+                "Tiêu chí này chưa có Mapping/Rule Engine mock đang hoạt động.",
+            )
+
+        sample = COMPARE_SAMPLE_CRITERIA.get(canonical_criterion_name)
+        if sample is None:
+            sample = {
+                "CriteriaName": canonical_criterion_name,
+                "CriteriaStatus": "OK",
+                "FileName": "",
+                "Description": "Dữ liệu đối chiếu phù hợp với mapping Rule Engine.",
+            }
+        criteria = dict(sample)
+        criteria["CriteriaName"] = criterion_name or canonical_criterion_name
+        criteria["Description"] = f"Rule Engine mock: {criteria['Description']}"
+        if canonical_criterion_name == "Hạn thanh toán":
+            criteria["CriteriaStatus"] = "NG"
+            criteria["FileName"] = RULE_ENGINE_PAYMENT_DEADLINE_FILE_NAME
+            criteria["Description"] = "Rule Engine mock: FileName vượt giới hạn 500 ký tự để kiểm thử client."
+
+        forced_status = os.getenv("TEST_RULE_ENGINE_FORCE_STATUS", "").strip().upper()
+        force_review = os.getenv("TEST_RULE_ENGINE_FORCE_REVIEW", "").strip().lower() in {"1", "true", "yes", "on"}
+        if force_review or forced_status == "REVIEW":
+            criteria["CriteriaStatus"] = "REVIEW"
+            criteria["FileName"] = ""
+            criteria["Description"] = "Rule Engine mock chưa đủ căn cứ kết luận nên trả REVIEW."
+        elif forced_status:
+            criteria["CriteriaStatus"] = forced_status
+            criteria["Description"] = f"Rule Engine mock: đã ép trạng thái {forced_status} để kiểm thử client."
+        return {"criteria": _normalize_mock_compare_criteria_status(criteria)}
+
     sample = COMPARE_SAMPLE_CRITERIA.get(criterion_name)
     if sample is None:
         sample = {
@@ -362,7 +474,8 @@ def _mock_compare_payload(user_prompt: str) -> dict:
             "FileName": "",
             "Description": "Tiêu chí đối chiếu đã hoàn toàn phù hợp.",
         }
-    return {"criteria": dict(sample)}
+    criteria = dict(sample)
+    return {"criteria": _normalize_mock_compare_criteria_status(criteria)}
 
 def _next_request_seq() -> int:
     global _request_seq
@@ -380,6 +493,32 @@ def _json_text_payload(payload: object, status_code: int = 200):
     return jsonify({"text": json.dumps(payload, ensure_ascii=False, sort_keys=False)}), status_code
 
 
+def _mock_forced_error(service_name: str) -> tuple[int, str] | None:
+    prefix = str(service_name or "SERVICE").strip().upper()
+    status_raw = (
+        request.headers.get("X-Mock-Error-Status")
+        or request.args.get("MockErrorStatus")
+        or os.getenv(f"TEST_{prefix}_FORCE_STATUS", "")
+    )
+    if not str(status_raw or "").strip():
+        return None
+
+    try:
+        status_code = int(str(status_raw).strip())
+    except ValueError:
+        status_code = 500
+    if status_code < 400 or status_code > 599:
+        status_code = 500
+
+    detail = (
+        request.headers.get("X-Mock-Error-Detail")
+        or request.args.get("MockErrorDetail")
+        or os.getenv(f"TEST_{prefix}_FORCE_DETAIL", "")
+        or f"{prefix} mock forced error"
+    )
+    return status_code, str(detail)
+
+
 def _safe_json_body() -> object:
     try:
         return request.get_json(silent=True)
@@ -387,14 +526,11 @@ def _safe_json_body() -> object:
         return {"_parse_error": repr(exc)}
 
 
-def _json_preview(payload: object, limit: int = 20000) -> str:
+def _json_preview(payload: object) -> str:
     try:
-        text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=False)
+        return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=False)
     except Exception:
-        text = str(payload)
-    if len(text) > limit:
-        return text[:limit] + f"\n... [truncated {len(text) - limit} chars]"
-    return text
+        return str(payload)
 
 
 def _append_text_log(path: Path, title: str, body: str) -> None:
@@ -591,20 +727,24 @@ def _extract_latest_prompts(messages: list) -> Tuple[str, str]:
 
 
 def _is_extract_prompt(user_prompt: str) -> bool:
-    match = re.search(r'"PromptType"\s*:\s*"([^"]*)"', str(user_prompt or ""), flags=re.IGNORECASE)
+    match = re.search(
+        r'"Prompt[\s_-]*Type"\s*[:=]\s*"([^"]*)"',
+        str(user_prompt or ""),
+        flags=re.IGNORECASE,
+    )
     if not match:
         return False
 
     no_marks = unicodedata.normalize("NFD", match.group(1))
     no_marks = "".join(ch for ch in no_marks if unicodedata.category(ch) != "Mn").lower()
     compact = "".join(ch for ch in no_marks if ch.isalnum())
-    return compact == "trichxuat"
+    return compact in {"trichxuat", "extract", "extraction"}
 
 
 def _llms_require_token(flask_request):
     expected = (settings_all.LLM_API_TOKEN or "").strip()
     if not expected or expected == "CHANGE_ME":
-        return False, (jsonify(detail="Server has not configured LLM_API_TOKEN"), 401)
+        return False, (jsonify(detail="Server chưa cấu hình LLM_API_TOKEN"), 401)
 
     key = (settings_all.LLM_API_TOKEN_QUERY_KEY or "Token").strip() or "Token"
     got = (flask_request.args.get(key) or "").strip()
@@ -679,13 +819,110 @@ def _after(resp):
     )
     resp.headers["Access-Control-Allow-Origin"] = "*"
     resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
-    resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-API-Token,X-Api-Token"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-API-Token,X-Api-Token,X-Mock-Error-Status,X-Mock-Error-Detail"
     return resp
 
 
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify(status="ok", service="receive-only-test-server", ts=time.time())
+
+
+@app.route("/ocr/status", methods=["GET"])
+def ocr_status():
+    return jsonify(
+        status="ready",
+        ready=True,
+        engine="mock-cpu",
+        engine_label="Mock OCR CPU",
+        use_vlm_ocr=False,
+    )
+
+
+@app.route("/llms/api/health", methods=["GET"])
+@app.route("/api/health", methods=["GET"])
+def llms_health():
+    with _mock_llm_state_lock:
+        active_model_id = _mock_active_model_id
+        active_model_name = _mock_active_model_name
+    return jsonify(
+        status="ok",
+        active_model_id=active_model_id,
+        active_model_name=active_model_name,
+        pid=os.getpid(),
+        runtime={"provider": "mock", "ready": True},
+        vram={"provider": "mock", "allocated_mb": 0, "reserved_mb": 0},
+        hf_home=getattr(settings_all, "LLM_HF_HOME", ""),
+        ts=time.time(),
+    )
+
+
+@app.route("/llms/connect", methods=["GET"])
+@app.route("/llms/api/connect", methods=["GET"])
+@app.route("/connect", methods=["GET"])
+@app.route("/api/connect", methods=["GET"])
+def llms_connect():
+    ok, err = _llms_require_token(request)
+    if not ok:
+        return err
+    with _mock_llm_state_lock:
+        active_model_id = _mock_active_model_id
+        active_model_name = _mock_active_model_name
+    return jsonify(
+        status="ok",
+        models=[],
+        active_model_id=active_model_id,
+        active_model_name=active_model_name,
+    )
+
+
+@app.route("/llms/api/models", methods=["GET"])
+@app.route("/api/models", methods=["GET"])
+def llms_list_models():
+    return jsonify([])
+
+
+@app.route("/llms/api/models/reload", methods=["POST"])
+@app.route("/api/models/reload", methods=["POST"])
+def llms_reload_models():
+    return jsonify(status="ok", count=0)
+
+
+@app.route("/llms/api/models/load", methods=["POST"])
+@app.route("/api/models/load", methods=["POST"])
+def llms_load_model():
+    global _mock_active_model_id, _mock_active_model_name
+    ok, err = _llms_require_token(request)
+    if not ok:
+        return err
+    req = request.get_json(silent=True) or {}
+    model_id = str(req.get("model_id") or "").strip()
+    if not model_id:
+        return jsonify(detail="model_id is required"), 400
+    with _mock_llm_state_lock:
+        _mock_active_model_id = model_id
+        _mock_active_model_name = model_id
+    return jsonify(active_model_id=model_id, active_model_name=model_id)
+
+
+@app.route("/llms/api/models/unload", methods=["POST"])
+@app.route("/api/models/unload", methods=["POST"])
+def llms_unload_model():
+    global _mock_active_model_id, _mock_active_model_name
+    ok, err = _llms_require_token(request)
+    if not ok:
+        return err
+    with _mock_llm_state_lock:
+        _mock_active_model_id = None
+        _mock_active_model_name = None
+    return jsonify(status="ok", active_model_id=None, active_model_name=None)
+
+
+@app.route("/llms/api/token/status", methods=["GET"])
+@app.route("/api/token/status", methods=["GET"])
+def llms_token_status():
+    expected = (settings_all.LLM_API_TOKEN or "").strip()
+    return jsonify(enabled=bool(expected and expected != "CHANGE_ME"))
 
 
 @app.route("/ocr", methods=["POST"])
@@ -696,6 +933,12 @@ def ocr_upload_receive_only():
         uploads.append(single_file)
     uploads.extend(request.files.getlist("files"))
     _log_ocr_request_input(uploads)
+
+    forced_error = _mock_forced_error("OCR")
+    if forced_error is not None:
+        status_code, detail = forced_error
+        logger.warning("[%s] OCR mock forced error: HTTP %d detail=%s", _request_seq_label(), status_code, detail)
+        return jsonify(detail=detail), status_code
 
     if not uploads:
         logger.warning("[%s] No file uploaded", _request_seq_label())
@@ -816,6 +1059,12 @@ def ai_llms_models_receive_only():
         logger.warning("[%s] LLM mock rejected: request body is not JSON object", _request_seq_label())
         return _json_text_payload({"detail": "request body must be a JSON object"}, 400)
 
+    forced_error = _mock_forced_error("LLM")
+    if forced_error is not None:
+        status_code, detail = forced_error
+        logger.warning("[%s] LLM mock forced error: HTTP %d detail=%s", _request_seq_label(), status_code, detail)
+        return _json_text_payload({"detail": detail}, status_code)
+
     client_messages = req.get("messages") or []
     if not isinstance(client_messages, list) or not client_messages:
         logger.warning("[%s] LLM mock rejected: messages is required", _request_seq_label())
@@ -839,6 +1088,17 @@ def ai_llms_models_receive_only():
         logger.warning("[%s] LLM mock rejected: no non-empty user message", _request_seq_label())
         return _json_text_payload({"detail": "messages must contain at least one non-empty message"}, 400)
 
+    try:
+        compare_execution_mode = normalize_compare_execution_mode(
+            req.get(
+                "CompareExecutionMode",
+                req.get("compareExecutionMode", req.get("CompareMode", req.get("compareMode"))),
+            )
+        )
+    except ValueError as error:
+        logger.warning("[%s] LLM mock rejected execution mode: %s", _request_seq_label(), error)
+        return _json_text_payload({"detail": str(error)}, 400)
+
     delay = _mock_delay_seconds()
     logger.info("[%s] LLM mock processing delay %.2fs", _request_seq_label(), delay)
     time.sleep(delay)
@@ -848,8 +1108,8 @@ def ai_llms_models_receive_only():
         mock_mode = "PromptType=Trích xuất"
         _append_mock_sections_log(response_payload)
     else:
-        response_payload = _mock_compare_payload(latest_user)
-        mock_mode = "PromptType=Đối chiếu"
+        response_payload = _mock_compare_payload(latest_user, compare_execution_mode)
+        mock_mode = f"PromptType=Đối chiếu CompareExecutionMode={compare_execution_mode}"
 
     logger.info(
         "[%s] LLM mock success: mode=%s messages=%d latest_system_len=%d latest_user_len=%d",
@@ -1028,10 +1288,15 @@ def llms_train_lora_api_receive_only():
 def main() -> None:
     host, port = _get_host_port()
     print(f"Starting Receive-Only Test Server at: http://{host}:{port}/")
-    print("Routes: GET /ping, POST /ocr, POST /api/ai_llms_models, POST /llms/api/ai_llms_models, POST /api/data_holidays, POST /api/train/run")
+    print("Routes: GET /ping, GET /ocr/status, POST /ocr")
+    print("LLM routes: GET /llms/api/health, GET /llms/api/connect, GET /llms/api/models, GET /llms/api/token/status")
+    print("AI routes: POST /api/ai_llms_models, POST /llms/api/ai_llms_models, POST /api/data_holidays, POST /api/train/run")
     print(r"Logs: Logs\app.log, Outputs\llms\prompt_client.txt, Outputs\llms\respond_AI.txt, Outputs\ocr\request_client.txt")
     print(r"Original OCR uploads: Outputs\files")
-    print("Mock delay: random 2-8s per OCR/LLM request; override with TEST_MOCK_DELAY_SECONDS=0")
+    print("Mock delay: OCR fixed 5s; LLM fixed 10s; override with TEST_MOCK_DELAY_SECONDS=0")
+    print("Compare modes: AUTO, RULE_ENGINE, LLM via request field CompareExecutionMode")
+    print("Force Rule REVIEW: TEST_RULE_ENGINE_FORCE_REVIEW=1 or TEST_RULE_ENGINE_FORCE_STATUS=REVIEW")
+    print("Force service error: headers X-Mock-Error-Status and X-Mock-Error-Detail")
 
     app.run(
         host=host,

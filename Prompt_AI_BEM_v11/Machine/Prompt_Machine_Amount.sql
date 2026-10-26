@@ -43,14 +43,14 @@ Bước 2: So sánh
    - INVOICE / COMMERCIALINVOICE / CUSTOMSHEET: chỉ đối chiếu khi nguồn hình thành là "Kế thừa công nợ".
    - Không đối chiếu RINGI với CONTRACT, Không đối chiếu RINGI với giá trị cần đối chiếu tính từ CONTRACT.
 
-5. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền hoặc thiếu căn cứ bắt buộc để tính toán => CriteriaStatus = "BLANK".
+5. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền hoặc thiếu căn cứ bắt buộc để tính toán => CriteriaStatus = "REVIEW".
 6. Nếu có ít nhất một mẫu dữ liệu đối chiếu sai theo điều kiện => CriteriaStatus = "NG".
 7. Nếu có đủ dữ liệu và tất cả điều kiện đối chiếu đều đúng => CriteriaStatus = "OK".
-8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+8. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền hoặc thiếu căn cứ để so sánh.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền hoặc thiếu căn cứ để so sánh.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -61,7 +61,7 @@ Bước 2: So sánh
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số tiền:
-- Nếu BLANK do thiếu dữ liệu số tiền hoặc thiếu căn cứ để so sánh => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số tiền hoặc thiếu căn cứ để so sánh => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số tiền => nêu rõ không khớp số tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số tiền đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -114,7 +114,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền",
-    "CriteriaStatus": "OK | NG | BLANK", 
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

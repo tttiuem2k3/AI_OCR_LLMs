@@ -44,7 +44,7 @@ INVOICE:
 - Nhận diện: VAT, HÓA ĐƠN VAT, HÓA ĐƠN GIÁ TRỊ GIA TĂNG, hoặc INVOICE
 - VoucherNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Invoice No, Invoice, No. hoặc No. & date of invoice,... phải giữ đầy đủ các thành phần và dấu phân cách /, - (nếu có), không được tự ý cắt bỏ một phần của mã. Ví dụ: Invoice No: AB-2026/00458 => VoucherNo = AB-2026/00458. Chỉ lấy từ tên file khi nội dung OCR không xác định được VoucherNo đáng tin cậy. VoucherNo không được lấy từ số địa chỉ, số nhà, số điện thoại, mã số thuế, ký hiệu (Serial), Số PO, Del. No...
 - VoucherDate lấy từ các dòng Ngày, Date, Invoice Date, Ngày lập chứng từ, Ngày phát hành hóa đơn, thường nằm ngay dưới hoặc gần VoucherNo. Chuẩn hóa về DD/MM/YYYY; với dạng có năm 2 chữ số như DD/MM/YY, D/MM/YY, DD-MM-YY, DD.MM.YY thì giữ nguyên thứ tự ngày-tháng-năm và chuyển YY thành 20YY, ví dụ 19.05.26 => 19/05/2026, 5/05/26 => 05/05/2026; chỉ coi thành phần đầu là năm khi có đúng 4 chữ số.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - DeliveryTerm là điều kiện giao hàng thường lấy ở Shipping Terms, Delivery Term, Trade Terms, gần Amount/Currency,... hoặc bất kỳ đâu khi có cụm dữ liệu có chứa giá trị bắt đầu bằng một trong các mã Incoterm hợp lệ như sau: FOB, CIF, CFR, EXW, DAP, DDP, DDU, FCA, CPT, CIP, DPU, DAT, FAS. Nếu có ký tự OCR nhiễu đứng trước mã Incoterm, ví dụ "JDAP MEIKO", vẫn phải nhận diện là "DAP MEIKO". Không lấy các dữ liệu khác như "T/T", "T/ T base", "TT base", "L/C", Payment term, Date of Delivery làm DeliveryTerm. Chỉ lấy mã Incoterm và địa danh, các mục khác không cần lấy.
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Với loại hóa đơn giá trị gia tăng, VAT nếu không rõ Currency thì Currency thường là "VND"
@@ -61,7 +61,7 @@ COMMERCIALINVOICE:
 - Nhận diện: Hóa đơn thương mại, COMMERCIAL INVOICE
 - VoucherNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Invoice No, Invoice, No. hoặc No. & date of invoice,... phải giữ đầy đủ các thành phần và dấu phân cách /, - (nếu có), không được tự ý cắt bỏ một phần của mã. Ví dụ: Invoice No: AB-2026/00458 => VoucherNo = AB-2026/00458. Chỉ lấy từ tên file khi nội dung OCR không xác định được VoucherNo đáng tin cậy. VoucherNo không được lấy từ số địa chỉ, số nhà, số điện thoại, mã số thuế, ký hiệu (Serial), Số PO, Del. No...
 - VoucherDate lấy từ các dòng Ngày, Date, Invoice Date, Ngày lập chứng từ, Ngày phát hành hóa đơn, thường nằm ngay dưới hoặc gần VoucherNo. Chuẩn hóa về DD/MM/YYYY; với dạng có năm 2 chữ số như DD/MM/YY, D/MM/YY, DD-MM-YY, DD.MM.YY thì giữ nguyên thứ tự ngày-tháng-năm và chuyển YY thành 20YY, ví dụ 19.05.26 => 19/05/2026, 5/05/26 => 05/05/2026; chỉ coi thành phần đầu là năm khi có đúng 4 chữ số.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - DeliveryTerm là điều kiện giao hàng thường lấy ở Shipping Terms, Delivery Term, Trade Terms, gần Amount/Currency,... hoặc bất kỳ đâu khi có cụm dữ liệu có chứa giá trị bắt đầu bằng một trong các mã Incoterm hợp lệ như sau: FOB, CIF, CFR, EXW, DAP, DDP, DDU, FCA, CPT, CIP, DPU, DAT, FAS. Nếu có ký tự OCR nhiễu đứng trước mã Incoterm, ví dụ "JDAP MEIKO", vẫn phải nhận diện là "DAP MEIKO". Không lấy các dữ liệu khác như "T/T", "T/ T base", "TT base", "L/C", Payment term, Date of Delivery làm DeliveryTerm. Chỉ lấy mã Incoterm và địa danh, các mục khác không cần lấy.
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Với loại hóa đơn giá trị gia tăng, VAT nếu không rõ Currency thì Currency thường là "VND"
@@ -84,7 +84,7 @@ CUSTOMSHEET:
 - VoucherDate lấy từ "Ngày phát hành".
 - DeliveryTerm, Currency, Amount chỉ được phép lấy từ giá trị của cụm "Tổng trị giá hóa đơn" có dạng "<InvoiceCode> - <Incoterm> - <Currency> - <Amount>"; ví dụ "A - CIP - JPY - 245.000" => DeliveryTerm = "CIP", Currency = "JPY", Amount = 245000, hoặc "A - DAP - VND - 2.485.000" => DeliveryTerm = "DAP", Currency = "VND", Amount = 2485000, hoặc "C - CIF - USD - 1.397,96" => DeliveryTerm = "CIF", Currency = "USD", Amount = 1397.96 ,nếu không có cụm như vậy thì "DeliveryTerm" = null, "Currency" = null, "Amount" = 0. 
 - Amount bắt buộc chuẩn hóa theo định dạng số trên tờ khai Hải quan Việt Nam: dấu "." luôn là phân tách hàng nghìn, dấu "," là thập phân, không được suy luận định dạng theo Currency, ví dụ "Tổng trị giá hóa đơn: A - CIF - USD - 663.960" => DeliveryTerm = "CIF", Currency = "USD", Amount = 663960, tuyệt đối không được trả 663.96.
-- Description lấy từ "Phần ghi chú" nếu có.
+- Description lấy từ "Phần ghi chú" và "Chi tiết khai trị giá" nếu có.
 - ClearanceDate là "Ngày hoàn thành kiểm tra" ở gần vùng "Mục thông báo của Hải quan", nếu không có ngày thì null
 => Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, ArrivalDate, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
 [[/DOC]]
@@ -96,7 +96,7 @@ PO:
 - ContractNo lấy từ dãy số/chữ số sau PO No./Số PO, Số PO, Số/No,... (đây là giá trị chính của chứng từ, không lấy các PO number trong bảng) thường nằm ở đầu chứng từ hoặc lấy từ Tên File chỉ khi OCR không rõ.
 - OrderDate là ngày của PO
 - RingiNo là số Ringi lấy từ Ringi No
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của nhà cung cấp hoặc bên nhận đơn đặt hàng; ưu tiên các nhãn Vendor/Supplier/Seller/Issue To/Order To/To hoặc tên doanh nghiệp nằm trong khối thông tin đối tác nhận PO, có kèm địa chỉ và thông tin liên hệ. Không lấy đơn vị phát hành PO tại các nhãn Issued By/Issued From/Buyer/Customer/Bill To/Ship To, vì trên Purchase Order đây thường là bên mua; đặc biệt không lấy Meiko Electronics Vietnam khi công ty này là đơn vị phát hành hoặc đặt hàng.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của nhà cung cấp hoặc bên nhận đơn đặt hàng; ưu tiên các nhãn Vendor/Supplier/Seller/Issue To/Order To/To hoặc tên doanh nghiệp nằm trong khối thông tin đối tác nhận PO, có kèm địa chỉ và thông tin liên hệ. Không lấy đơn vị phát hành PO tại các nhãn Issued By/Issued From/Buyer/Customer/Bill To/Ship To, vì trên Purchase Order đây thường là bên mua, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - DeliveryTerm là điều kiện giao hàng thường lấy ở Shipping Terms, Delivery Term, Trade Terms, gần Amount/Currency,... hoặc bất kỳ đâu khi có cụm dữ liệu có chứa giá trị bắt đầu bằng một trong các mã Incoterm hợp lệ như sau: FOB, CIF, CFR, EXW, DAP, DDP, DDU, FCA, CPT, CIP, DPU, DAT, FAS. Nếu có ký tự OCR nhiễu đứng trước mã Incoterm, ví dụ "JDAP MEIKO", vẫn phải nhận diện là "DAP MEIKO". Không lấy các dữ liệu khác như "T/T", "T/ T base", "TT base", "L/C", Payment term, Date of Delivery làm DeliveryTerm. Chỉ lấy mã Incoterm và địa danh, các mục khác không cần lấy.
 - PaymentTerm lấy từ điều khoản thanh toán, Payment terms, Payment method, Hình thức thanh toán.
@@ -111,7 +111,7 @@ CONTRACT:
 - ContractNo lấy từ chuỗi số/dãy số sau các từ khóa như: Số hợp đồng, Hợp đồng số, Hợp đồng chi tiết số, Detail ContractNo,... hoặc lấy từ Tên File khi OCR không rõ. Nếu không có thì trả ContractNo = null, tuyệt đối không được lấy từ các từ khóa như: Số dự án/Project No., số báo giá hoặc số hợp đồng nguyên tắc.
 - OrderDate là ngày của hợp đồng
 - RingiNo là số Ringi lấy từ Ringi No, RINGI,..
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - DeliveryTerm là điều kiện giao hàng thường lấy ở Shipping Terms, Delivery Term, Trade Terms, gần Amount/Currency,... hoặc bất kỳ đâu khi có cụm dữ liệu có chứa giá trị bắt đầu bằng một trong các mã Incoterm hợp lệ như sau: FOB, CIF, CFR, EXW, DAP, DDP, DDU, FCA, CPT, CIP, DPU, DAT, FAS. Nếu có ký tự OCR nhiễu đứng trước mã Incoterm, ví dụ "JDAP MEIKO", vẫn phải nhận diện là "DAP MEIKO". Không lấy các dữ liệu khác như "T/T", "T/ T base", "TT base", "L/C", Payment term, Date of Delivery làm DeliveryTerm. Chỉ lấy mã Incoterm và địa danh, các mục khác không cần lấy.
 - PaymentTerm lấy từ điều khoản thanh toán, Payment terms, Payment method, Hình thức thanh toán.
@@ -148,7 +148,7 @@ INSPECTION:
  + "InspectionType" = Biên bản nghiệm thu hệ thống: có từ như nghiệm thu hệ thống, system commissioning, chạy thử, test, balancing, đạt thông số kỹ thuật, đủ điều kiện vận hành/bàn giao.
  + "InspectionType" = Biên bản nghiệm thu hiện trường: Biên bản xác nhận khối lượng công việc hoàn thành, có từ như completed work, kiểm tra tại công trường, hoàn thành lắp đặt/thi công.
  + "InspectionType" = Biên bản nghiệm thu sau một năm: BIÊN BẢN NGHIỆM THU MỘT NĂM, có từ như one year inspection, nghiệm thu một năm, sau 1 năm, warranty period.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Amount là lấy ở sau hoặc dưới các dòng tổng số tiền, Total Amount, Total, Grand Total, Gross Value, Thành tiền, Tổng tiền, Tổng cộng,... trong các mẫu chứng từ. Nếu chỉ có số tiền riêng lẻ thì trả về null), phải lấy số tiền total.
 - Amount/Currency phải lấy theo giá trị tiền gốc/thanh toán thực tế trên chứng từ, cùng một dòng hoặc cùng một bảng dữ liệu. Không lấy giá trị quy đổi, giá trị tham khảo hoặc số tiền sau tỷ giá.
@@ -166,7 +166,7 @@ HANDOVER:
 - Có 2 loại biên bản bàn giao:
  + "HandoverType" = Biên bản bàn giao - Handover: Biên bản bàn giao.
  + "HandoverType" = Bàn giao vật tư: Biên bản xác nhận vật tư và thiết bị về đến công trường, có từ như vật tư, thiết bị, delivered to site, về đến công trường.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - RingiNo là số Ringi lấy từ Ringi No
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Amount là lấy ở sau hoặc dưới các dòng tổng số tiền, Total Amount, Total, Grand Total, Gross Value, Thành tiền, Tổng tiền, Tổng cộng, ... trong các mẫu chứng từ. Nếu chỉ có số tiền riêng lẻ thì trả về null), phải lấy số tiền total.
@@ -176,15 +176,16 @@ HANDOVER:
 
 [[DOC:STATEMENT]]
 STATEMENT:
-- KEY tách detail theo VoucherNo, mỗi giá trị này là 1 mẫu STATEMENT tương đương 1 detail duy nhất, không được trùng lặp.
+- KEY tách detail theo ListNo, mỗi giá trị này là 1 mẫu STATEMENT tương đương 1 detail duy nhất, không được trùng lặp.
 - Nhận diện: STATEMENT, Bảng kê hóa đơn thương mại
-- VoucherNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Invoice No, Invoice, No. hoặc No. & date of invoice,... phải giữ đầy đủ các thành phần và dấu phân cách /, - (nếu có), không được tự ý cắt bỏ một phần của mã. Ví dụ: Invoice No: AB-2026/00458 => VoucherNo = AB-2026/00458. Chỉ lấy từ tên file khi nội dung OCR không xác định được VoucherNo đáng tin cậy. VoucherNo không được lấy từ số địa chỉ, số nhà, số điện thoại, mã số thuế, ký hiệu (Serial), Số PO, Del. No...
+- ListNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Số, No,... thường nằm bên dưới tiêu đề của bảng kê (không cần lấy dữ liệu ngày tháng)
+- VoucherNo thường nằm ở phần giữa chứng từ, sẽ có một hoặc nhiều số hóa đơn, mỗi số hóa đơn lấy toàn bộ chuỗi/số nằm ngay sau hoặc bên dưới nhãn Số hóa đơn, Invoice No, Invoice, No. hoặc No. & date of invoice,... phải giữ đầy đủ các thành phần và dấu phân cách /, - (nếu có), không được tự ý cắt bỏ một phần của mã. Nếu có nhiều số hóa đơn thì mỗi số viết cách nhau một dấu phẩy, Ví dụ: AB-2026/00458, AB-2026/00459, AB-2026/00460
 - VoucherDate lấy từ các dòng Ngày, Date, Invoice Date, Ngày lập chứng từ, Ngày phát hành hóa đơn, thường nằm ngay dưới hoặc gần VoucherNo. Chuẩn hóa về DD/MM/YYYY; với dạng có năm 2 chữ số như DD/MM/YY, D/MM/YY, DD-MM-YY, DD.MM.YY thì giữ nguyên thứ tự ngày-tháng-năm và chuyển YY thành 20YY, ví dụ 19.05.26 => 19/05/2026, 5/05/26 => 05/05/2026; chỉ coi thành phần đầu là năm khi có đúng 4 chữ số.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Amount là lấy ở sau hoặc dưới các dòng tổng số tiền, Total Amount, Total, Grand Total, Gross Value, Thành tiền, Tổng tiền, Tổng cộng,.. trong các mẫu chứng từ. Nếu chỉ có số tiền riêng lẻ thì trả về null), phải lấy số tiền total.
 - Amount/Currency phải lấy theo giá trị tiền gốc/thanh toán thực tế trên chứng từ, cùng một dòng hoặc cùng một bảng dữ liệu. Không lấy giá trị quy đổi, giá trị tham khảo hoặc số tiền sau tỷ giá.
-=> Chỉ được phép map các Field: VoucherNo, VoucherDate, SupplierName, Currency, Amount
+=> Chỉ được phép map các Field: ListNo, VoucherNo, VoucherDate, SupplierName, Currency, Amount
 [[/DOC]]
 
 [[DOC:BILL]]
@@ -193,9 +194,10 @@ BILL:
 - Nhận diện: BILL OF LADING, B/L
 - BillNo lấy từ số vận đơn, B/L No, Bill of Lading No, AWB No hoặc lấy từ Tên File khi OCR không rõ.
 - BillDate lấy từ ngày phát hành vận đơn, Date of issue, Shipped on board date.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - GoodsName là các tên hàng hóa, nếu có nhiều tên thì mỗi tên cách nhau một dấu phẩy, ví dụ: Mặt hàng A, Mặt hàng B,..
-=> Chỉ được phép map các Field: BillNo, BillDate, SupplierName, GoodsName
+=> Chỉ được phép map các Field: BillNo, BillDate, Currency, SupplierName, GoodsName
 [[/DOC]]
 
 [[DOC:PACKINGLIST]]
@@ -203,7 +205,7 @@ PACKINGLIST:
 - KEY tách detail theo PackingListNo, mỗi giá trị này là 1 mẫu PACKINGLIST tương đương 1 detail duy nhất, không được trùng lặp.
 - Nhận diện: PACKING LIST
 - PackingListNo lấy từ số phiếu đóng gói, Packing List No, P/L No, Reference No hoặc InvoiceNo trên Packing list hoặc lấy từ Tên File khi OCR không rõ.
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - PackingListDate lấy từ ngày lập phiếu đóng gói, Date, Date of issue trên Packing list.
 - GoodsName là các tên hàng hóa, nếu có nhiều tên thì mỗi tên cách nhau một dấu phẩy theo thứ tự mặt hàng tìm thấy, ví dụ: Mặt hàng A, Mặt hàng B,..
 - Quantity lấy tổng số lượng, Total Quantity, Total Net/Gross Weight, hoặc tổng số lượng của mặt hàng ghi trên Packing list, nếu có nhiều mặt hàng với nhiều số lượng thì mỗi số lượng cách nhau một dấu phẩy theo thứ tự mặt hàng tìm thấy, ví dụ: 1000, 2000, 3000,..
@@ -215,7 +217,7 @@ OTHER:
 - KEY tách detail theo VoucherName, mỗi giá trị này là 1 mẫu OTHER tương đương 1 detail duy nhất, không được trùng lặp.
 - Nhận diện: khác các loại trên.
 - VoucherName là tên, tiêu đề của hóa đơn, chứng từ,... 
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter/Issued By và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - Currency xác định theo thứ tự ưu tiên: ưu tiên lấy mã/ký hiệu tiền xuất hiện trực tiếp tại cùng dòng, cùng bảng hoặc tiêu đề cột của số tiền như Currency, Unit Price, Amount, Total, ví dụ: nếu tiêu đề cột có "Unit Price ¥", "Amount ¥", "Price ¥", "Unit Price JPY", "Amount JPY" thì áp dụng Currency = JPY, hoặc có dấu hiệu tiền Việt thì "VND" => Quy đổi ký hiệu tiền: "$", "US$", "USD" => USD; "VND", "VNĐ", "ĐỒNG" => VND; "EUR", "€", "EURO" => EUR; "JPY", "YEN", "¥" => JPY; "CNY", "RMB", "NDT" => CNY, nếu không đủ căn cứ thì dựa vào các thông tin khác của chứng từ để suy luận, ví dụ có: JAPAN => "JPY", VietNam => "VND"
 - Amount là lấy ở sau hoặc dưới các dòng tổng số tiền, Total Amount, Total, Grand Total, Gross Value, Thành tiền, Tổng tiền, Tổng cộng,.. trong các mẫu chứng từ. Nếu chỉ có số tiền riêng lẻ thì trả về null), phải lấy số tiền total.
 - Amount/Currency phải lấy theo giá trị tiền gốc/thanh toán thực tế trên chứng từ, cùng một dòng hoặc cùng một bảng dữ liệu. Không lấy giá trị quy đổi, giá trị tham khảo hoặc số tiền sau tỷ giá.
@@ -248,7 +250,7 @@ CUSTOMSHEET:
 - VoucherDate lấy từ "Ngày phát hành".
 - DeliveryTerm, Currency, Amount chỉ được phép lấy từ giá trị của cụm "Tổng trị giá hóa đơn" có dạng "<InvoiceCode> - <Incoterm> - <Currency> - <Amount>"; ví dụ "A - CIP - JPY - 245.000" => DeliveryTerm = "CIP", Currency = "JPY", Amount = 245000, hoặc "A - DAP - VND - 2.485.000" => DeliveryTerm = "DAP", Currency = "VND", Amount = 2485000, hoặc "C - CIF - USD - 1.397,96" => DeliveryTerm = "CIF", Currency = "USD", Amount = 1397.96 ,nếu không có cụm như vậy thì "DeliveryTerm" = null, "Currency" = null, "Amount" = 0. 
 - Amount bắt buộc chuẩn hóa theo định dạng số trên tờ khai Hải quan Việt Nam: dấu "." luôn là phân tách hàng nghìn, dấu "," là thập phân, không được suy luận định dạng theo Currency, ví dụ "Tổng trị giá hóa đơn: A - CIF - USD - 663.960" => DeliveryTerm = "CIF", Currency = "USD", Amount = 663960, tuyệt đối không được trả 663.96.
-- Description lấy từ "Phần ghi chú" nếu có.
+- Description lấy từ "Phần ghi chú" và "Chi tiết khai trị giá" nếu có.
 - ClearanceDate là "Ngày hoàn thành kiểm tra" ở gần vùng "Mục thông báo của Hải quan", nếu không có ngày thì null
 - Chỉ được phép map các Field: DeclarationNo, ClearanceStatus, SupplierName, StagingArea, ArrivalDate, VoucherNo, VoucherDate, DeliveryTerm, Currency, Amount, Description, ClearanceDate
 
@@ -293,14 +295,14 @@ HANDOVER:
 - Chỉ được phép map các Field: ContractNo, HandoverDate, HandoverType, SupplierName, RingiNo, Currency, Amount
 
 STATEMENT:
-- KEY tách detail theo VoucherNo, mỗi giá trị này là 1 mẫu STATEMENT tương đương 1 detail duy nhất, không được trùng lặp.
+- KEY tách detail theo ListNo, mỗi giá trị này là 1 mẫu STATEMENT tương đương 1 detail duy nhất, không được trùng lặp.
 - Nhận diện: STATEMENT, Bảng kê hóa đơn thương mại
-- Chỉ được phép map các Field: VoucherNo, VoucherDate, SupplierName, Currency, Amount
+- Chỉ được phép map các Field: ListNo, VoucherNo, VoucherDate, SupplierName, Currency, Amount
 
 BILL:
 - KEY tách detail theo BillNo, mỗi giá trị này là 1 mẫu BILL tương đương 1 detail duy nhất, không được trùng lặp.
 - Nhận diện: BILL OF LADING, B/L
-- Chỉ được phép map các Field: BillNo, BillDate, SupplierName, GoodsName
+- Chỉ được phép map các Field: BillNo, BillDate, Currency, SupplierName, GoodsName
 
 PACKINGLIST:
 - KEY tách detail theo PackingListNo, mỗi giá trị này là 1 mẫu PACKINGLIST tương đương 1 detail duy nhất, không được trùng lặp.
@@ -313,7 +315,7 @@ OTHER:
 - Chỉ được phép map các Field: VoucherName, SupplierName, Currency, Amount, Description
 
 * Quy tắc trích xuất Field:
-- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, đặc biệt không lấy công ty mua hàng như Meiko Electronics Vietnam.
+- SupplierName bắt buộc lấy tên pháp nhân đầy đủ của bên bán hoặc đơn vị phát hành hóa đơn trong header, ưu tiên tên gần logo, tiêu đề/thông tin Invoice hoặc các nhãn Seller/Supplier/Vendor/Exporter và có kèm địa chỉ, số đăng ký, điện thoại; tuyệt đối loại trừ tên thuộc Buyer/Customer/Sold To/Bill To/Ship To/Consignee/Issue To/ATTN/Shipper/Forwarder/Carrier nếu không được xác định rõ là bên bán, và lưu ý là SupplierName thường khác với "CÔNG TY TNHH ĐIỆN TỬ MEIKO VIỆT NAM"
 - VoucherNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Invoice No, Invoice, No. hoặc No. & date of invoice,... phải giữ đầy đủ các thành phần và dấu phân cách /, - (nếu có), không được tự ý cắt bỏ một phần của mã. Ví dụ: Invoice No: AB-2026/00458 => VoucherNo = AB-2026/00458. Chỉ lấy từ tên file khi nội dung OCR không xác định được VoucherNo đáng tin cậy. VoucherNo không được lấy từ số địa chỉ, số nhà, số điện thoại, mã số thuế, ký hiệu (Serial), Số PO, Del. No...
 - VoucherDate lấy từ các dòng Ngày, Date, Invoice Date, Ngày lập chứng từ, Ngày phát hành hóa đơn, thường nằm ngay dưới hoặc gần VoucherNo. Chuẩn hóa về DD/MM/YYYY; với dạng có năm 2 chữ số như DD/MM/YY, D/MM/YY, DD-MM-YY, DD.MM.YY thì giữ nguyên thứ tự ngày-tháng-năm và chuyển YY thành 20YY, ví dụ 19.05.26 => 19/05/2026, 5/05/26 => 05/05/2026; chỉ coi thành phần đầu là năm khi có đúng 4 chữ số.
 - Amount là lấy ở sau hoặc dưới các dòng tổng số tiền, Total Amount, Total, Grand Total, Gross Value, Thành tiền, Tổng tiền, Tổng cộng,... trong các mẫu chứng từ. Nếu chỉ có số tiền riêng lẻ thì trả về 0, phải lấy số tiền total.
@@ -327,6 +329,7 @@ OTHER:
 - ApprovalLast lấy ngày hoặc tên người duyệt cuối cùng tại vùng chữ ký, con dấu (Approval/Approved by) của chứng từ.
 - AcceptanceDate là ngày lập biên bản nghiệm thu (ngay dưới quốc hiệu, không lấy ngày của đợt nghiệm thu) hoặc ngày ký xác nhận hoàn thành được ghi trên Biên bản nghiệm thu.
 - HandoverDate lấy ngày bàn giao, Date of handover hoặc ngày ký giao nhận trên Biên bản bàn giao.
+- ListNo thường nằm ở phần đầu chứng từ, lấy toàn bộ chuỗi/số nằm ngay sau nhãn Số, No,... thường nằm bên dưới tiêu đề của bảng kê (không cần lấy dữ liệu ngày tháng).
 - BillNo lấy từ số vận đơn, B/L No, Bill of Lading No, AWB No hoặc lấy trong dữ liệu Tên File.
 - BillDate lấy từ ngày phát hành vận đơn, Date of issue, Shipped on board date.
 - PackingListNo lấy từ số phiếu đóng gói, Packing List No, P/L No, Reference No trên Packing list hoặc lấy từ Tên File khi OCR không rõ.
@@ -341,7 +344,7 @@ OTHER:
 - SectionOrder: được đánh số thứ tự từ 1 đến n theo số lượng Master
 - TotalAmount (number, chỉ khi rất rõ ràng; không rõ => 0)
 - TotalCurrency (string, không rõ => null)
-- Signature (string): VALID
+- Signature (string): VALID | INVALID
 
 * Quy tắc tách detail theo KEY (bắt buộc)
 - Mỗi SectionType có 01 KEY tách detail duy nhất.
@@ -369,6 +372,10 @@ OTHER:
   + Ví dụ: "123.456,000", "123,456.000", "123,456,000" nếu cùng thể hiện một số tiền và dòng Total ghi rõ "123,456,000" thì chuẩn hóa thành 123456000.
   + Nếu SectionType = CUSTOMSHEET: "." là phân tách hàng nghìn, "," là thập phân.
   + Nếu SectionType khác CUSTOMSHEET và không có dấu hiệu OCR mơ hồ: "," là phân tách hàng nghìn, "." là thập phân; phần thập phân toàn số 0 thì bỏ, ví dụ 4321.00 => 4321, 6789.56 => 6789.56
+- Signature kiểm tra vùng cuối trang/cuối chứng từ trước khi kết luận, vì đây là vùng thường có chữ ký, con dấu, tên công ty, tên người ký, chức danh hoặc OCR lỗi do scan chữ ký/con dấu.
+  + Nếu có phủ định rõ ràng như unsigned, not signed, chưa ký, không ký, pending sign, not approved, chưa phê duyệt thì Signature = "INVALID".
+  + Nếu không có phủ định và vùng cuối có bất kỳ dấu hiệu nào như Signature, Signed by, Approval, Approved by, xác nhận, ký bởi, CÔNG TY, TNHH, CO., LTD, COMPANY, TRADING, tên công ty, tên người ký, chức danh, con dấu hoặc chuỗi OCR lỗi giống vùng ký/con dấu thì Signature = "VALID".
+  + Chỉ trả Signature = "INVALID" khi có phủ định rõ ràng hoặc đã kiểm tra toàn bộ chứng từ nhưng không có bất kỳ dấu hiệu chữ ký/con dấu/phê duyệt/xác nhận nào. Không được trả "INVALID" chỉ vì OCR vùng ký bị lỗi hoặc không đọc rõ nội dung.
 - Field không có dữ liệu: string => null, number => 0, date => null.';
 
 --- Dữ liệu đầu vào 

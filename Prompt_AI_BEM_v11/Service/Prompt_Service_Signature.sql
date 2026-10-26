@@ -20,7 +20,7 @@ Bước 2: Chuẩn hóa dữ liệu kiểm tra
 - Nếu dữ liệu kiểm tra chữ ký và con dấu rỗng, null, không đọc được, không đủ rõ ràng hoặc không đủ căn cứ để kết luận thì coi là "không có dữ liệu chữ ký và con dấu".
 
 Bước 3: So sánh theo từng trường hợp
-1. Nếu không xác định được hồ sơ thuộc trường hợp trong nước hay nước ngoài => CriteriaStatus = "BLANK".
+1. Nếu không xác định được hồ sơ thuộc trường hợp trong nước hay nước ngoài => CriteriaStatus = "REVIEW".
 2. Trường hợp trong nước:
 - Hóa đơn VAT phải có chữ ký điện tử của bên bán.
 - PO phải có cả chữ ký và con dấu, có xác nhận của cả 2 bên mua và bán.
@@ -29,14 +29,14 @@ Bước 3: So sánh theo từng trường hợp
 3. Trường hợp nước ngoài:
 - PO phải có chữ ký hoặc con dấu của cả 2 bên mua và bán.
 - IVN/PL phải có chữ ký điện tử, chữ ký hoặc con dấu theo dữ liệu đầu vào thể hiện hợp lệ.
-4. Nếu bất kỳ chứng từ bắt buộc nào cần dùng để kết luận thiếu dữ liệu chữ ký và con dấu => CriteriaStatus = "BLANK".
+4. Nếu bất kỳ chứng từ bắt buộc nào cần dùng để kết luận thiếu dữ liệu chữ ký và con dấu => CriteriaStatus = "REVIEW".
 5. Nếu có đủ dữ liệu nhưng có ít nhất một chứng từ không đáp ứng điều kiện chữ ký và con dấu theo trường hợp tương ứng => CriteriaStatus = "NG".
 6. Nếu có đủ dữ liệu và tất cả chứng từ bắt buộc đều đáp ứng điều kiện chữ ký và con dấu theo trường hợp tương ứng => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu chữ ký và con dấu.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu chữ ký và con dấu.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu chữ ký và con dấu.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -47,7 +47,7 @@ Bước 3: So sánh theo từng trường hợp
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả kiểm tra chữ ký và con dấu:
-- Nếu BLANK do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại!.
+- Nếu REVIEW do thiếu dữ liệu chữ ký và con dấu => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại!.
 - Nếu NG => nêu rõ loại chứng từ nào không đáp ứng điều kiện chữ ký và con dấu, file nào, cần kiểm tra lại!.
 - Nếu OK => nêu ngắn gọn rằng "Chữ ký và con dấu đã hoàn toàn hợp lệ."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -83,7 +83,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Chữ ký và con dấu",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

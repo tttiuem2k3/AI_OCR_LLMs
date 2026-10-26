@@ -45,6 +45,8 @@ curl -s http://127.0.0.1:4444/llms/api/health
 ## 1) OCR API
 
 ### `POST /ocr`
+
+AI OCR có timeout mặc định 600 giây cho mỗi file.
 Thực hiện OCR cho **1 file** hoặc **nhiều file**.
 
 - Hỗ trợ: PDF, ảnh (`.png .jpg .jpeg .tif .tiff .bmp .webp`), Office (`.docx .xlsx .xls .pptx`)
@@ -247,6 +249,7 @@ curl -N -X POST "http://127.0.0.1:4444/llms/api/chat/stream?Token=YOUR_TOKEN" \
 
 #### `POST /llms/api/ai_llms_models`
 Gọi model đặc biệt `SPECIAL_MODEL_ID` (config trong `App/settings_all.py`).
+Riêng bước Rules Engine có timeout mặc định 600 giây, được khai báo trực tiếp trong code Rule Engine.
 
 **Body (JSON)**
 ```json

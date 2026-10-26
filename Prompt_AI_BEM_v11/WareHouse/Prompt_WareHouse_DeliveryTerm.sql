@@ -18,7 +18,8 @@ DECLARE @PromptHandle NVARCHAR(MAX) = N'
 - Chỉ kiểm tra các loại chứng từ: PO, COMMERCIALINVOICE, CUSTOMSHEET.
 - Bỏ qua các loại chứng từ khác.
 - Cần có ít nhất 2 loại chứng từ có điều kiện giao hàng hợp lệ để đối chiếu.
-- Nếu chỉ có 0 hoặc 1 loại chứng từ hợp lệ thì CriteriaStatus = "BLANK".
+- Nếu chỉ có 0 hoặc 1 loại chứng từ hợp lệ thì CriteriaStatus = "REVIEW".
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
 
 2. Chuẩn hóa điều kiện giao hàng
 - Chuyển toàn bộ giá trị sang IN HOA.
@@ -169,7 +170,7 @@ NG:
 11. FileName
 - Nếu OK: FileName = "".
 - Nếu NG: liệt kê file đại diện gây khác biệt.
-- Nếu BLANK: liệt kê file hoặc loại chứng từ thiếu dữ liệu cần kiểm tra.
+- Nếu REVIEW: liệt kê file hoặc loại chứng từ thiếu dữ liệu cần kiểm tra.
 - Không liệt kê file nhiễu nếu cùng loại chứng từ còn file hợp lệ.
 - Không liệt kê trùng tên file.
 - Nếu nhiều file thì phân tách bằng dấu phẩy.
@@ -183,7 +184,7 @@ NG:
   Ví dụ: "PO = CIF JAPAN, COMMERCIALINVOICE = CIF VIETNAM."
 - Nếu NG do khác Province:
   Ví dụ: "PO = CIF TOKYO, COMMERCIALINVOICE = CIF OSAKA."
-- Nếu BLANK: nêu rõ thiếu điều kiện giao hàng hợp lệ trên chứng từ nào.';
+- Nếu REVIEW: nêu rõ thiếu điều kiện giao hàng hợp lệ trên chứng từ nào.';
 
 --- Dữ liệu đầu vào 
 DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
@@ -203,9 +204,6 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {{#if (eq this.SectionType "PO")}}
 { Loại chứng từ: {{this.SectionType}} | Điều kiện giao hàng: {{this.DeliveryTerm}} | Tên file: {{this.FileName}} }
 {{/if}}
-{{#if (eq this.SectionType "INVOICE")}}
-{ Loại chứng từ: {{this.SectionType}} | Điều kiện giao hàng: {{this.DeliveryTerm}} | Tên file: {{this.FileName}} }
-{{/if}}
 {{#if (eq this.SectionType "COMMERCIALINVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Điều kiện giao hàng: {{this.DeliveryTerm}} | Tên file: {{this.FileName}} }
 {{/if}}
@@ -216,7 +214,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Điều kiện giao hàng",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

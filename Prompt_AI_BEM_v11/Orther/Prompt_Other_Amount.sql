@@ -27,19 +27,19 @@ Bước 2: Xác định số tiền theo nguồn hình thành
 3. Nếu CONTRACT có nhiều đợt hoặc nhiều tỷ lệ thanh toán, chỉ so sánh dữ liệu thuộc đúng đợt hiện tại theo mô tả ĐNTT và điều khoản CONTRACT.
 
 Bước 3: Kết luận
-1. Thiếu dữ liệu bắt buộc hoặc không xác định được số tiền hợp lệ theo điều khoản CONTRACT => CriteriaStatus = "BLANK".
+1. Thiếu dữ liệu bắt buộc hoặc không xác định được số tiền hợp lệ theo điều khoản CONTRACT => CriteriaStatus = "REVIEW".
 2. Có đủ dữ liệu nhưng vi phạm ít nhất một điều kiện số tiền, tỷ lệ 90%-110% hoặc giới hạn ĐNTT không vượt hóa đơn => CriteriaStatus = "NG".
 3. Có đủ dữ liệu và toàn bộ điều kiện đều đúng => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
-- BLANK: liệt kê file thiếu số tiền hoặc thiếu điều khoản cần dùng để tính.
+- REVIEW: liệt kê file thiếu số tiền hoặc thiếu điều khoản cần dùng để tính.
 - NG: liệt kê file có số tiền hoặc điều kiện không khớp.
 - OK: trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ chứng từ và file thiếu dữ liệu hoặc thiếu căn cứ tính số tiền.
+- REVIEW: nêu rõ chứng từ và file thiếu dữ liệu hoặc thiếu căn cứ tính số tiền.
 - NG: nêu rõ điều kiện bị sai giữa ĐNTT, CONTRACT, RINGI và INVOICE hoặc COMMERCIALINVOICE.
 - OK: ghi "Số tiền đã hoàn toàn phù hợp với các chứng từ và điều kiện thanh toán."
 - Description phải phù hợp với CriteriaStatus.';
@@ -83,7 +83,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

@@ -34,15 +34,15 @@ Bước 1: Chuẩn hóa tên nhà cung cấp
 
 Bước 2: So sánh
 1. So sánh tên nhà cung cấp trên ĐNTT với toàn bộ tên nhà cung cấp trên các mẫu dữ liệu được dùng để đối chiếu sau chuẩn hóa.
-2. Nếu bất kỳ mẫu dữ liệu nào bị thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "BLANK".
+2. Nếu bất kỳ mẫu dữ liệu nào bị thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "REVIEW".
 3. Nếu bất kỳ mẫu dữ liệu nào sau chuẩn hóa tên nhà cung cấp không khớp với tên nhà cung cấp trên ĐNTT (độ khớp < 80%) => CriteriaStatus = "NG".
 4. Nếu dữ liệu tên nhà cung cấp giữa ĐNTT và toàn bộ chứng từ được dùng để đối chiếu đều khớp (độ khớp >= 80%) sau chuẩn hóa => CriteriaStatus = "OK".
 5. Nếu khác biệt rõ rệt về bản chất pháp nhân, khác doanh nghiệp hoặc khác công ty thì coi là không khớp.
-6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu tên nhà cung cấp.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu tên nhà cung cấp.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -53,7 +53,7 @@ Bước 2: So sánh
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu tên nhà cung cấp:
-- Nếu BLANK do thiếu dữ liệu tên nhà cung cấp => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu tên nhà cung cấp => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp tên nhà cung cấp => nêu rõ không khớp tên nhà cung cấp giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Tên nhà cung cấp đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -100,7 +100,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Tên nhà cung cấp",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

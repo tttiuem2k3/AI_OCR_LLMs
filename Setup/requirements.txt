@@ -9,17 +9,19 @@ uvicorn==0.38.0
 pydantic==2.10.3
 pydantic-settings==2.11.0
 PyYAML==6.0.2
+requests==2.32.5
 
 # OCR result and Office document processing
 numpy==1.26.4
 pillow==12.0.0
+aspose-words-foss==26.7.0
 python-docx==1.2.0
 python-pptx==1.0.2
 openpyxl==3.1.5
 xlrd==2.0.1
 
-# Deterministic Rule Engine POC
-rule-engine==5.0.2
+# SQL Server read-only configuration for ONT1043 Mapping/Rule Engine
+pyodbc==5.2.0
 
 # Local LLM runtime
 transformers==4.57.6

@@ -22,14 +22,14 @@ Bước 2: So sánh:
 1. Sử dụng dữ liệu ĐNTT và các chứng từ thuộc loại INVOICE hoặc COMMERCIALINVOICE(nếu có) để kiểm tra tiêu chí.
 2. Tạo tập DnttInvoiceSet từ toàn bộ InvoiceNo rõ ràng của ĐNTT.
 3. Tạo tập InvoiceNoSet từ toàn bộ số hóa đơn rõ ràng của các mẫu INVOICE hoặc COMMERCIALINVOICE(nếu có).
-4. Nếu DnttInvoiceSet rỗng hoặc Nếu InvoiceNoSet rỗng => CriteriaStatus = "BLANK".
+4. Nếu DnttInvoiceSet rỗng hoặc Nếu InvoiceNoSet rỗng => CriteriaStatus = "REVIEW".
 5. Nếu có ít nhất một số hóa đơn trong ĐNTT không có số hóa đơn tương ứng trong InvoiceNoSet (mức độ tương đồng ký tự của cặp số hóa đơn < 80%)  => CriteriaStatus = "NG".
 6. Nếu DnttInvoiceSet hoàn toàn là tập con của tập InvoiceNoSet sau chuẩn hóa (mức độ tương đồng ký tự của mỗi cặp số hóa đơn >= 80%) => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -40,7 +40,7 @@ Bước 2: So sánh:
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu tên nhà cung cấp:
-- Nếu BLANK do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, cần kiểm tra lại.
 - Nếu NG do không khớp số hóa đơn => nêu rõ không khớp giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số hóa đơn đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -75,7 +75,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

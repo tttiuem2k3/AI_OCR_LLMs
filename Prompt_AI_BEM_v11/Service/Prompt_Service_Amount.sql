@@ -35,7 +35,7 @@ Bước 2: Xác định số tiền phải thanh toán theo CONTRACT
    - Nếu CONTRACT có Điều khoản thanh toán và đọc được tỷ lệ phần trăm của đợt thanh toán hiện tại:
      Số tiền phải thanh toán của CONTRACT = Tỷ lệ phần trăm thanh toán của đợt hiện tại x Số tiền gốc trên CONTRACT.
    - Nếu Dữ liệu ĐNTT không có Diễn giải hoặc CONTRACT không có Điều khoản thanh toán, hoặc có Điều khoản thanh toán nhưng không đọc được tỷ lệ phần trăm của đợt thanh toán hiện tại:
-     + Không được trả BLANK chỉ vì thiếu Điều khoản thanh toán.
+     + Không được trả REVIEW chỉ vì thiếu Điều khoản thanh toán.
      + Nếu CONTRACT có Số tiền gốc thì mặc định:
      + Số tiền phải thanh toán của CONTRACT = Số tiền gốc trên CONTRACT.
 
@@ -46,7 +46,7 @@ Bước 2: Xác định số tiền phải thanh toán theo CONTRACT
 5. Không được kết luận NG chỉ vì một CONTRACT riêng lẻ không bằng Tổng số tiền yêu cầu trên ĐNTT.
 6. Chỉ đối chiếu Tổng số tiền yêu cầu trên ĐNTT với Tổng số tiền phải thanh toán theo toàn bộ CONTRACT liên quan.
 
-7. Chỉ trả BLANK liên quan đến CONTRACT khi:
+7. Chỉ trả REVIEW liên quan đến CONTRACT khi:
    - Cần dùng CONTRACT để xác định số tiền phải thanh toán;
    - Nhưng CONTRACT không có Số tiền gốc hoặc Số tiền gốc không đọc được.
 
@@ -59,7 +59,7 @@ Bước 3: Đối chiếu theo nguồn hình thành công nợ
 1. Trường hợp nguồn hình thành công nợ là "Đặt cọc/trả trước":
    - Tổng số tiền yêu cầu trên ĐNTT phải bằng đúng Tổng số tiền phải thanh toán theo CONTRACT.
    - Nếu không xác định được tỷ lệ thanh toán theo CONTRACT nhưng CONTRACT có Số tiền gốc thì đối chiếu trực tiếp: Tổng số tiền yêu cầu trên ĐNTT = Tổng số tiền gốc của các CONTRACT liên quan.
-   - Không được trả BLANK nếu ĐNTT và CONTRACT đều có số tiền và các số tiền này khớp nhau sau khi cộng tổng.
+   - Không được trả REVIEW nếu ĐNTT và CONTRACT đều có số tiền và các số tiền này khớp nhau sau khi cộng tổng.
    
 2. Trường hợp nguồn hình thành công nợ là "Kế thừa công nợ":
    - Tổng số tiền yêu cầu trên ĐNTT phải bằng đúng Tổng số tiền phải thanh toán theo CONTRACT.
@@ -76,13 +76,13 @@ Bước 3: Đối chiếu theo nguồn hình thành công nợ
      + Tổng số tiền CONTRACT <= 110 phần trăm Tổng số tiền RINGI.
 
 Bước 4: Quy tắc xác định CriteriaStatus
-1. CriteriaStatus = "BLANK" khi thiếu dữ liệu số tiền bắt buộc để kết luận, ví dụ:
+1. CriteriaStatus = "REVIEW" khi thiếu dữ liệu số tiền bắt buộc để kết luận, ví dụ:
    - ĐNTT thiếu Số tiền yêu cầu hoặc Tổng số tiền yêu cầu.
    - CONTRACT thiếu Số tiền gốc trong trường hợp cần dùng CONTRACT để xác định số tiền phải thanh toán.
    - INVOICE hoặc COMMERCIALINVOICE thiếu số tiền trong trường hợp bắt buộc phải đối chiếu với hóa đơn.
    - RINGI thiếu số tiền trong trường hợp có kiểm tra RINGI.
 
-2. Không được trả BLANK trong các trường hợp sau:
+2. Không được trả REVIEW trong các trường hợp sau:
    - CONTRACT thiếu Điều khoản thanh toán nhưng vẫn có Số tiền gốc.
    - Không xác định được tỷ lệ phần trăm thanh toán nhưng vẫn có thể đối chiếu trực tiếp theo Số tiền gốc CONTRACT.
    - ĐNTT, CONTRACT và INVOICE/COMMERCIALINVOICE đều có số tiền và các số tiền cần đối chiếu đã khớp nhau sau khi cộng tổng.
@@ -99,11 +99,11 @@ Bước 4: Quy tắc xác định CriteriaStatus
    - Tổng số tiền yêu cầu trên ĐNTT khớp với Tổng số tiền phải thanh toán theo điều khoản trên CONTRACT.
    - Tổng số tiền yêu cầu trên ĐNTT nhỏ hơn hoặc bằng Tổng INVOICE/COMMERCIALINVOICE trong trường hợp kế thừa công nợ.
    - Tất cả điều kiện đối chiếu áp dụng đều đúng.
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền bắt buộc.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền bắt buộc.
 - Không liệt kê file CONTRACT vào FileName chỉ vì thiếu Điều khoản thanh toán, nếu CONTRACT vẫn có Số tiền gốc.
 - Nếu NG thì liệt kê chính xác tên file có dữ liệu số tiền sai lệch hoặc liên quan trực tiếp đến sai lệch.
 - Nếu OK thì trả chuỗi rỗng "".
@@ -115,8 +115,8 @@ Bước 4: Quy tắc xác định CriteriaStatus
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số tiền:
-- Nếu BLANK do thiếu dữ liệu số tiền thì nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
-- Không được mô tả BLANK do thiếu Điều khoản thanh toán nếu CONTRACT vẫn có Số tiền gốc và vẫn đủ dữ liệu để đối chiếu.
+- Nếu REVIEW do thiếu dữ liệu số tiền thì nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Không được mô tả REVIEW do thiếu Điều khoản thanh toán nếu CONTRACT vẫn có Số tiền gốc và vẫn đủ dữ liệu để đối chiếu.
 - Nếu NG do số tiền không khớp thì phải nêu rõ sai lệch theo tổng tiền:
   + Tổng số tiền yêu cầu trên ĐNTT.
   + Tổng số tiền phải thanh toán theo CONTRACT.
@@ -168,7 +168,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

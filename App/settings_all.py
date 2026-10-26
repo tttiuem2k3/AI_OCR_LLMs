@@ -51,7 +51,7 @@ class SettingsAll(BaseSettings):
     GPU_INDEX: int = int(os.getenv("GPU_INDEX", os.getenv("CUDA_GPU_INDEX", "0")))
 
     # Bật tắt sử dụng CUDA cho OCR
-    REQUIRE_CUDA: bool = False
+    REQUIRE_CUDA: bool = True
 
     # Tương thích ngược (cũ): chỉ dùng GPU0.
     # Nếu biến này đang True thì sẽ ép GPU_INDEX về 0.
@@ -78,7 +78,7 @@ class SettingsAll(BaseSettings):
     LAYOUT_DIR: str = os.getenv("LAYOUT_DIR", "Models/PP-DocLayout_plus-L_infer")
 
     # Thiết bị chạy toàn bộ OCR: "gpu" hoặc "cpu".
-    DEVICE: str = "cpu"
+    DEVICE: str = "gpu"
 
     # Cấu hình riêng cho OCR khi chạy CPU.
     # Paddle 3.3.1 hiện lỗi PIR/oneDNN với pipeline PPStructureV3, nên tắt oneDNN.
@@ -187,6 +187,18 @@ class SettingsAll(BaseSettings):
         "ttt_asoft_51MzBy8L2vQXp9S6rX8zV4nN2m1k0p9O8i7u6y5t4r3e2w1",
     )
     LLM_API_TOKEN_QUERY_KEY: str = os.getenv("LLM_API_TOKEN_QUERY_KEY", "Token")
+
+    # Kết nối SQL Server dùng chung cho các chức năng AI cần đọc DB.
+    DB_SQL_DRIVER: str = os.getenv("DB_SQL_DRIVER", "ODBC Driver 17 for SQL Server")
+    DB_SQL_SERVER: str = os.getenv("DB_SQL_SERVER", "192.168.0.200\\SP2019,1449")
+    DB_SQL_DATABASE: str = os.getenv("DB_SQL_DATABASE", "MEIKO2026_T")
+    DB_SQL_USERNAME: str = os.getenv("DB_SQL_USERNAME", "sa")
+    DB_SQL_PASSWORD: str = os.getenv("DB_SQL_PASSWORD", "As@19006123")
+    DB_SQL_TIMEOUT: int = int(os.getenv("DB_SQL_TIMEOUT", "5"))
+
+    # Bật/tắt riêng Rule Engine để rollout an toàn.
+    RULE_ENGINE_ENABLED: bool = os.getenv("RULE_ENGINE_ENABLED", "true").lower() == "true"
+    RULE_ENGINE_CONFIG_CACHE_SECONDS: int = int(os.getenv("RULE_ENGINE_CONFIG_CACHE_SECONDS", "30"))
 
     # Đường dẫn cache/model của HuggingFace (mặc định: Project/Models)
     LLM_HF_HOME: str = os.getenv("LLM_HF_HOME", "Models")

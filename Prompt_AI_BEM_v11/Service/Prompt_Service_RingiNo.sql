@@ -20,20 +20,20 @@ Bước 1: Chuẩn hóa số Ringi:
 Bước 2: So sánh
 1. Sử dụng dữ liệu ĐNTT và các chứng từ thuộc loại CONTRACT, RINGI để kiểm tra tiêu chí.
 2. Số Ringi trên ĐNTT phải khớp với số Ringi trên RINGI đính kèm và trên CONTRACT sau chuẩn hóa.
-3. Nếu bất kỳ mẫu dữ liệu nào thiếu dữ liệu Số Ringi => CriteriaStatus = "BLANK".
+3. Nếu bất kỳ mẫu dữ liệu nào thiếu dữ liệu Số Ringi => CriteriaStatus = "REVIEW".
 4. Nếu có ít nhất một dữ liệu số Ringi trên RINGI hoặc CONTRACT không khớp với ĐNTT => CriteriaStatus = "NG".
 5. Nếu dữ liệu số Ringi trên ĐNTT khớp với toàn bộ dữ liệu số Ringi trên RINGI và CONTRACT => CriteriaStatus = "OK".
 
 Bước 3: Trả kết quả
 Thứ tự ưu tiên khi kết luận "CriteriaStatus"
-1. Nếu bất kỳ nguồn nào cần dùng để kết luận thiếu dữ liệu số Ringi => CriteriaStatus = "BLANK".
+1. Nếu bất kỳ nguồn nào cần dùng để kết luận thiếu dữ liệu số Ringi => CriteriaStatus = "REVIEW".
 2. Nếu có đủ dữ liệu số Ringi nhưng có ít nhất một điều kiện đối chiếu sai => CriteriaStatus = "NG".
 3. Nếu có đủ dữ liệu số Ringi và tất cả điều kiện đối chiếu đều đúng => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số Ringi.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số Ringi.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số Ringi.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -44,7 +44,7 @@ Thứ tự ưu tiên khi kết luận "CriteriaStatus"
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số Ringi:
-- Nếu BLANK do thiếu dữ liệu số Ringi => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số Ringi => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số Ringi => nêu rõ không khớp số Ringi giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số Ringi đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -79,7 +79,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số Ringi",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

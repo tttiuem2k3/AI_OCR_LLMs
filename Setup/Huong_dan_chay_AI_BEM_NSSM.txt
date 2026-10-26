@@ -1,0 +1,192 @@
+HƯỚNG DẪN CHẠY AI BEM BẰNG NSSM
+=================================
+
+MỤC ĐÍCH
+--------
+Chạy `run_server.py` dưới dạng Windows Service để:
+- Tự hoạt động khi không mở VS Code hoặc PowerShell.
+- Tự khởi động lại khi tiến trình bị dừng.
+- Dễ dàng Start, Stop và Restart.
+
+THÔNG TIN CẤU HÌNH
+-------------------
+Tên service: AI_BEM_Server
+Thư mục dự án: E:\Asoft\AI_BEM\BEM_AI_PROJECT
+Python: E:\Asoft\AI_BEM\BEM_AI_PROJECT\AI_BEM\Scripts\python.exe
+File chạy: E:\Asoft\AI_BEM\BEM_AI_PROJECT\run_server.py
+Port mặc định: 4444
+NSSM đề xuất: E:\Asoft\Tools\nssm\nssm.exe
+
+LƯU Ý
+-----
+- Không chạy đồng thời `run_server.py` trong VS Code và Windows Service.
+- Dùng đúng tài khoản Windows đã chạy AI thành công, đặc biệt khi sử dụng GPU, DB hoặc thư mục riêng.
+- Không ghi mật khẩu vào file hướng dẫn.
+- Không di chuyển hoặc xóa `nssm.exe` sau khi tạo service.
+
+1. KIỂM TRA TRƯỚC KHI CÀI
+-------------------------
+Mở PowerShell và chạy:
+
+$Project = 'E:\Asoft\AI_BEM\BEM_AI_PROJECT'
+$Python = "$Project\AI_BEM\Scripts\python.exe"
+
+Test-Path $Python
+Test-Path "$Project\run_server.py"
+& $Python -c "import paddle, paddleocr, paddlex, uvicorn; print('Python environment OK')"
+
+Chạy thử server:
+
+Set-Location $Project
+& $Python .\run_server.py
+
+Nếu server chạy bình thường, nhấn Ctrl+C để dừng trước khi tạo service.
+
+2. CÀI NSSM
+-----------
+1. Tải NSSM tại: https://nssm.cc/download
+2. Giải nén bản 64-bit.
+3. Đặt `nssm.exe` tại vị trí cố định, ví dụ:
+
+E:\Asoft\Tools\nssm\nssm.exe
+
+Mở PowerShell bằng quyền Administrator và kiểm tra:
+
+$Nssm = 'E:\Asoft\Tools\nssm\nssm.exe'
+& $Nssm version
+
+3. TẠO WINDOWS SERVICE
+----------------------
+Mở PowerShell bằng quyền Administrator:
+
+$Nssm = 'E:\Asoft\Tools\nssm\nssm.exe'
+& $Nssm install AI_BEM_Server
+
+Nhập thông tin trong cửa sổ NSSM:
+
+Application
+- Path: E:\Asoft\AI_BEM\BEM_AI_PROJECT\AI_BEM\Scripts\python.exe
+- Startup directory: E:\Asoft\AI_BEM\BEM_AI_PROJECT
+- Arguments: E:\Asoft\AI_BEM\BEM_AI_PROJECT\run_server.py
+
+Details
+- Display name: AI BEM Server
+- Startup type: Automatic
+
+Log on
+- Chọn `This account`.
+- Nhập tài khoản Windows đã chạy AI thành công.
+- Nhập mật khẩu trực tiếp trên cửa sổ NSSM.
+
+I/O
+- Output: E:\Asoft\AI_BEM\BEM_AI_PROJECT\Logs\nssm_stdout.log
+- Error: E:\Asoft\AI_BEM\BEM_AI_PROJECT\Logs\nssm_stderr.log
+
+Exit actions
+- Action: Restart
+- Delay: 5000 ms
+
+Nhấn `Install service` để hoàn tất.
+
+4. KHỞI ĐỘNG VÀ KIỂM TRA
+------------------------
+$Nssm = 'E:\Asoft\Tools\nssm\nssm.exe'
+$Service = 'AI_BEM_Server'
+$Port = 4444
+
+& $Nssm start $Service
+& $Nssm status $Service
+
+Kiểm tra port:
+
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+  Where-Object { $_.LocalPort -eq $Port }
+
+Kiểm tra API:
+
+Invoke-WebRequest "http://127.0.0.1:$Port/ping" -UseBasicParsing
+
+Kết quả đạt yêu cầu khi service ở trạng thái `SERVICE_RUNNING` và `/ping` trả về HTTP 200.
+
+5. LỆNH VẬN HÀNH
+----------------
+$Nssm = 'E:\Asoft\Tools\nssm\nssm.exe'
+$Service = 'AI_BEM_Server'
+
+& $Nssm status $Service   # Xem trạng thái
+& $Nssm start $Service    # Khởi động
+& $Nssm stop $Service     # Dừng
+& $Nssm restart $Service  # Khởi động lại
+
+Mở giao diện Windows Services:
+
+services.msc
+
+6. XEM LOG
+----------
+Log ứng dụng:
+E:\Asoft\AI_BEM\BEM_AI_PROJECT\Logs\app.log
+
+Log lỗi NSSM:
+E:\Asoft\AI_BEM\BEM_AI_PROJECT\Logs\nssm_stderr.log
+
+Theo dõi log trực tiếp:
+
+Get-Content 'E:\Asoft\AI_BEM\BEM_AI_PROJECT\Logs\app.log' -Tail 100 -Wait
+
+7. CẬP NHẬT CODE AN TOÀN
+------------------------
+1. Dừng service:
+
+& $Nssm stop AI_BEM_Server
+
+2. Cập nhật code, model hoặc cấu hình.
+3. Kiểm tra cú pháp:
+
+$Project = 'E:\Asoft\AI_BEM\BEM_AI_PROJECT'
+$Python = "$Project\AI_BEM\Scripts\python.exe"
+& $Python -m py_compile "$Project\run_server.py"
+
+4. Khởi động lại và theo dõi log:
+
+& $Nssm start AI_BEM_Server
+Get-Content "$Project\Logs\app.log" -Tail 100 -Wait
+
+8. XỬ LÝ LỖI THƯỜNG GẶP
+-----------------------
+Service vừa chạy đã dừng
+- Kiểm tra `Logs\nssm_stderr.log` và `Logs\app.log`.
+- Kiểm tra đúng Python, Startup directory và quyền tài khoản service.
+
+Port đã được sử dụng
+- Dừng `run_server.py` đang chạy trong VS Code hoặc service cũ.
+- Không chạy hai server trên cùng port.
+
+Service không thấy GPU, model hoặc cache
+- Dùng cùng tài khoản Windows đã chạy AI thành công.
+- Kiểm tra quyền truy cập Models, Cache, Outputs, Logs và DB.
+- Với thư mục mạng, nên dùng đường dẫn UNC thay cho ổ đĩa được map.
+
+Sửa code nhưng chưa có hiệu lực
+
+& $Nssm restart AI_BEM_Server
+
+9. GỠ SERVICE
+-------------
+Mở PowerShell bằng quyền Administrator:
+
+$Nssm = 'E:\Asoft\Tools\nssm\nssm.exe'
+& $Nssm stop AI_BEM_Server
+& $Nssm remove AI_BEM_Server confirm
+
+Lệnh này chỉ gỡ Windows Service, không xóa source code, model, môi trường Python hoặc log.
+
+CHECKLIST
+---------
+[ ] `run_server.py` chạy thành công bằng Python của dự án.
+[ ] Không có server thủ công đang chiếm port 4444.
+[ ] Path, Arguments và Startup directory đã cấu hình đúng.
+[ ] Service dùng tài khoản có đủ quyền GPU, model, cache và DB.
+[ ] `AI_BEM_Server` có trạng thái `SERVICE_RUNNING`.
+[ ] API `/ping` trả về HTTP 200.
+[ ] `Logs\app.log` có dữ liệu mới.

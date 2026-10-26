@@ -28,20 +28,24 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 - Nếu dữ liệu số hóa đơn rỗng, null thì coi là "không có dữ liệu số hóa đơn để nhóm đối chiếu".
 
 Bước 2: Đối chiếu
-1. Chỉ sử dụng các chứng từ thuộc loại INVOICE, COMMERCIALINVOICE, CUSTOMSHEET, STATEMENT(nếu có) để kiểm tra tiêu chí. Lưu ý chỉ cần có mẫu dữ liệu thuộc một trong hai loại chứng: INVOICE hoặc COMMERCIALINVOICE là được.
+1. Chỉ sử dụng Hóa đơn, Hóa đơn thương mại, Tờ khai hải quan, Bảng kê hóa đơn thương mại (nếu có) và Packing list (nếu có) để kiểm tra tiêu chí. Lưu ý chỉ cần có mẫu dữ liệu thuộc một trong hai loại chứng từ Hóa đơn hoặc Hóa đơn thương mại là được.
 2. Đối chiếu ngày hóa đơn của mỗi mẫu dữ liệu của loại chứng từ CUSTOMSHEET theo quy trình như sau:
-   - Trường hợp 1: Số hóa đơn trên CUSTOMSHEET ưu tiên ghép nhóm để đối chiếu với COMMERCIALINVOICE. Nếu CUSTOMSHEET và COMMERCIALINVOICE và STATEMENT(nếu có) có cùng số hóa đơn thì tiến hành so khớp ngày hóa đơn của các chứng từ (ngày hóa đơn phải khớp nhau hoặc chênh lệch tối đa 1 ngày), nếu không có số hóa đơn nào cùng nhóm với nhau thì chuyển sang trường hợp 2. 
-   - Trường hợp 2: Số hóa đơn trên CUSTOMSHEET có thể ghép nhóm đối chiếu với số hóa đơn trên INVOICE. Nếu CUSTOMSHEET và INVOICE và STATEMENT(nếu có) có cùng số hóa đơn thì tiến hành so khớp ngày hóa đơn của các chứng từ (ngày hóa đơn phải khớp nhau hoặc chênh lệch tối đa 1 ngày), nếu vẫn không có số hóa đơn nào cùng nhóm với nhau thì => CriteriaStatus = "NG".
-   => Vậy ngày hóa đơn của mỗi mẫu dữ liệu loại CUSTOMSHEET có thể đối chiếu với ngày hóa đơn của INVOICE hoặc COMMERCIALINVOICE chỉ cần thỏa mãn 1 trong 2 trường hợp được coi là hợp lệ (cho phép chênh lệch không quá 1 ngày, ví dụ ngày 02-01-2000, 01-01-2000 hoặc 02-01-2000, 03-01-2000 là vẫn hợp lệ)
+   - Trường hợp 1: Số hóa đơn trên Tờ khai hải quan ưu tiên ghép nhóm để đối chiếu với Hóa đơn thương mại. Nếu Tờ khai hải quan, Hóa đơn thương mại, Bảng kê hóa đơn thương mại (nếu có) và Packing list (nếu có) có cùng số thì ngày trên các chứng từ phải khớp chính xác; nếu không có số nào cùng nhóm thì chuyển sang trường hợp 2.
+   - Trường hợp 2: Số hóa đơn trên Tờ khai hải quan có thể ghép nhóm đối chiếu với số hóa đơn trên Hóa đơn. Nếu Tờ khai hải quan, Hóa đơn, Bảng kê hóa đơn thương mại (nếu có) và Packing list (nếu có) có cùng số thì ngày trên các chứng từ phải khớp chính xác; nếu vẫn không có số nào cùng nhóm thì => CriteriaStatus = "NG".
+   - Với Packing list, sử dụng Số Packing list để ghép nhóm và Ngày Packing list để đối chiếu.
+   => Ngày của tất cả chứng từ trong cùng nhóm phải khớp chính xác, không cho phép chênh lệch ngày.
 3. Không bắt buộc số hóa đơn INVOICE phải giống số hóa đơn COMMERCIALINVOICE nếu mỗi nhóm đối chiếu tương ứng đều hợp lệ.
 4. Nếu có cùng số hóa đơn sau chuẩn hóa nhưng ngày hóa đơn khác nhau trong cùng nhóm đối chiếu => CriteriaStatus = "NG".
-5. Nếu chứng từ cần dùng để đối chiếu bị thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "BLANK".
-6. Nếu ngày hóa đơn khớp nhau hoặc chênh lệch tối đa 1 ngày theo từng nhóm  => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. Nếu chứng từ cần dùng để đối chiếu bị thiếu số hóa đơn hoặc thiếu ngày hóa đơn => CriteriaStatus = "REVIEW".
+6. Nếu ngày của tất cả chứng từ trong từng nhóm khớp chính xác => CriteriaStatus = "OK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
+- Nếu không có STATEMENT thì bỏ qua đối chiếu STATEMENT, không cần giải thích gì thêm.
+- Nếu không có PACKINGLIST thì bỏ qua đối chiếu PACKINGLIST, không cần giải thích gì thêm.
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu ngày hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -52,7 +56,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu ngày hóa đơn:
-- Nếu BLANK do thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu ngày hóa đơn hoặc thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp ngày hóa đơn => nêu rõ không khớp ngày hóa đơn giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Ngày hóa đơn đã hoàn toàn hợp lệ."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -81,6 +85,9 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {{#if (eq this.SectionType "STATEMENT")}}
 { Loại chứng từ: {{this.SectionType}} | Số hóa đơn: {{this.VoucherNo}} | Ngày hóa đơn: {{this.VoucherDate}} | Tên file: {{this.FileName}} }
 {{/if}}
+{{#if (eq this.SectionType "PACKINGLIST")}}
+{ Loại chứng từ: {{this.SectionType}} | Số Packing list: {{this.PackingListNo}} | Ngày Packing list: {{this.PackingListDate}} | Tên file: {{this.FileName}} }
+{{/if}}
 {{/each}}';
 
 -- Dữ liệu đầu ra 
@@ -88,7 +95,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Ngày hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

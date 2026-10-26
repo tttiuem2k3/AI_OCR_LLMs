@@ -23,14 +23,14 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 
 Bước 2: Đối chiếu
 1. So sánh dữ liệu loại tiền trên ĐNTT với các mẫu dữ liệu đầu vào. Nếu không có RINGI có thể bỏ qua, không cần giải thích
-2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu loại tiền => CriteriaStatus = "BLANK".
+2. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu loại tiền => CriteriaStatus = "REVIEW".
 3. Nếu có ít nhất một mẫu dữ liệu có loại tiền khác với loại tiền trên DNTT sau chuẩn hóa => CriteriaStatus = "NG".
 4. Nếu có đủ dữ liệu và tất cả điều kiện đối chiếu loại tiền đều đúng => CriteriaStatus = "OK".
-5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu loại tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -41,7 +41,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu loại tiền:
-- Nếu BLANK do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu loại tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu loại tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp loại tiền => nêu rõ không khớp loại tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Dữ liệu Loại tiền đã hoàn toàn trùng khớp."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -82,7 +82,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Loại tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

@@ -19,14 +19,14 @@ Bước 1: Chuẩn hóa loại tiền
 Bước 2: So sánh
 1. Sử dụng dữ liệu ĐNTT và các mẫu dữ liệu đầu vào để so sánh loại tiền
 2. So sánh loại tiền giữa ĐNTT và toàn bộ các mẫu dữ liệu sau khi chuẩn hóa dữ liệu loại tiền.
-3. Nếu bất kỳ mẫu dữ liệu nào thiếu dữ liệu loại tiền => CriteriaStatus = "BLANK".
+3. Nếu bất kỳ mẫu dữ liệu nào thiếu dữ liệu loại tiền => CriteriaStatus = "REVIEW".
 4. Nếu có ít nhất một mẫu dữ liệu có loại tiền khác với loại tiền của ĐNTT sau chuẩn hóa => CriteriaStatus = "NG".
 5. Nếu toàn bộ dữ liệu loại tiền trong nhóm so sánh đều cùng một loại tiền sau chuẩn hóa => CriteriaStatus = "OK".
-6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu loại tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -37,7 +37,7 @@ Bước 2: So sánh
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu loại tiền:
-- Nếu BLANK do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp loại tiền => nêu rõ không khớp loại tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Loại tiền đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -81,7 +81,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Loại tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn khi so sánh tiêu chí"
   }

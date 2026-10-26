@@ -29,15 +29,18 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 Bước 2: Đối chiếu
 1. Dữ liệu loại tiền trên ĐNTT là một thành phần chính trong nhóm đối chiếu.
 2. Sử dụng dữ liệu loại tiền trên ĐNTT và toàn bộ dữ liệu loại tiền trên các chứng từ đầu vào để đối chiếu.
-3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu loại tiền => CriteriaStatus = "BLANK".
+3. Nếu bất kỳ mẫu dữ liệu nào cần dùng để kết luận thiếu dữ liệu loại tiền => CriteriaStatus = "REVIEW".
 4. Nếu có ít nhất một mẫu dữ liệu có loại tiền khác với các mẫu còn lại sau chuẩn hóa => CriteriaStatus = "NG".
 5. Nếu có đủ dữ liệu và toàn bộ dữ liệu loại tiền trong nhóm đối chiếu đều cùng một loại tiền sau chuẩn hóa => CriteriaStatus = "OK". 
 (Lưu ý "US$" và "USD" hoặc "Tiền Việt Nam" và "VND" hoặc "Yen Japan" và "¥" , "JY" và "JPY" là tương đương nên vẫn OK)
-6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+6. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
+- Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
+- Nếu không có STATEMENT thì bỏ qua đối chiếu STATEMENT, không cần giải thích gì thêm.
+- Nếu không có RINGI thì bỏ qua đối chiếu RINGI, không cần giải thích gì thêm.
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu loại tiền.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu loại tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -48,7 +51,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu loại tiền:
-- Nếu BLANK do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu loại tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu loại tiền => nêu rõ thiếu dữ liệu loại tiền ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp loại tiền => nêu rõ không khớp loại tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Loại tiền đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -85,6 +88,9 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {{#if (eq this.SectionType "STATEMENT")}}
 { Loại chứng từ: {{this.SectionType}} | Loại tiền: {{this.Currency}} | Tên file: {{this.FileName}} }
 {{/if}}
+{{#if (eq this.SectionType "RINGI")}}
+{ Loại chứng từ: {{this.SectionType}} | Loại tiền: {{this.Currency}} | Tên file: {{this.FileName}} }
+{{/if}}
 {{/each}}';
 
 -- Dữ liệu đầu ra 
@@ -92,7 +98,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Loại tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

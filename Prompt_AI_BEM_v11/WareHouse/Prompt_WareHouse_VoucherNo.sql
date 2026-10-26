@@ -23,31 +23,39 @@ Bước 1: Chuẩn hóa dữ liệu dùng để đối chiếu
 - Nếu dữ liệu số hóa đơn rỗng, null thì coi là "không có dữ liệu số hóa đơn".
 
 Bước 2: Đối chiếu
-1. Chỉ sử dụng các chứng từ thuộc loại INVOICE, COMMERCIALINVOICE và CUSTOMSHEET để kiểm tra tiêu chí.
-2. Đọc và chuẩn hóa tất cả số hóa đơn trên ĐNTT, INVOICE, COMMERCIALINVOICE và CUSTOMSHEET theo quy tắc ở Bước 1.
+1. Chỉ sử dụng các chứng từ thuộc loại INVOICE, COMMERCIALINVOICE, CUSTOMSHEET và STATEMENT (nếu có) để kiểm tra tiêu chí.
+2. Đọc và chuẩn hóa tất cả số hóa đơn trên ĐNTT, INVOICE, COMMERCIALINVOICE, CUSTOMSHEET; đồng thời đọc Số bảng kê và số hóa đơn trên STATEMENT nếu có bảng kê hóa đơn thương mại.
 3. Đối chiếu số hóa đơn trên ĐNTT:
    - ĐNTT ưu tiên đối chiếu với INVOICE.
    - Nếu từng số hóa đơn trên ĐNTT khớp với ít nhất một số hóa đơn INVOICE hoặc COMMERCIALINVOICE (nếu có) sau chuẩn hóa thì điều kiện ĐNTT được xem là hợp lệ.
    - Chỉ khi số hóa đơn ĐNTT không khớp với cả INVOICE hoặc COMMERCIALINVOICE (nếu có), hoặc xuất hiện số hóa đơn trên 2 loại này khác với các số hóa đơn trên ĐNTT thì điều kiện không hợp lệ
+   - Nếu không có COMMERCIALINVOICE thì bỏ qua đối chiếu COMMERCIALINVOICE, không cần giải thích gì thêm.
 
-4. Đối chiếu số hóa đơn trên CUSTOMSHEET:
+4. Trường hợp không có STATEMENT, đối chiếu số hóa đơn trên CUSTOMSHEET:
    - CUSTOMSHEET ưu tiên đối chiếu với COMMERCIALINVOICE.
    - Nếu các số hóa đơn CUSTOMSHEET khớp với các số hóa đơn COMMERCIALINVOICE sau chuẩn hóa thì điều kiện CUSTOMSHEET được xem là hợp lệ.
    - Nếu CUSTOMSHEET không khớp COMMERCIALINVOICE thì được đối chiếu tiếp với INVOICE.
    - Nếu các số hóa đơn CUSTOMSHEET khớp với các số hóa đơn INVOICE sau chuẩn hóa thì điều kiện CUSTOMSHEET được xem là hợp lệ.
-   - Chỉ khi các số hóa đơn CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE, hoặc xuất hiện số hóa đơn trên 2 loại này khác với các số hóa đơn trên CUSTOMSHEET thì điều kiện không hợp lệ 
+   - Chỉ khi các số hóa đơn CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE, hoặc xuất hiện số hóa đơn trên 2 loại này khác với các số hóa đơn trên CUSTOMSHEET thì điều kiện không hợp lệ.
+   - Nếu không có STATEMENT thì bỏ qua đối chiếu STATEMENT, không cần giải thích gì thêm.
 
-5. Ngoài ra trên một số chứng từ, nếu có nhiều hóa đơn, dữ liệu số hóa đơn có thể bị ghi tắt, ví dụ ở CUSTOMSHEET có số hóa đơn là: ABCXYZ01-02-03, thì cũng có thể được hiểu là cho 3 hóa đơn: ABCXYZ01, ABCXYZ02, ABCXYZ03
-6. Không bắt buộc số hóa đơn INVOICE phải giống số hóa đơn COMMERCIALINVOICE nếu các nhóm đối chiếu tương ứng đều đạt.
-7. Nếu số hóa đơn trên ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE sau chuẩn hóa => CriteriaStatus = "NG".
-8. Nếu số hóa đơn trên CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE sau chuẩn hóa => CriteriaStatus = "NG".
-9. Nếu thiếu dữ liệu số hóa đơn ở chứng từ cần dùng để đối chiếu => CriteriaStatus = "BLANK".
-10. Nếu các điều kiện đối chiếu hợp lệ (mức độ tương đồng trên tổng số lượng ký tự >= 80% sau chuẩn hóa) => CriteriaStatus = "OK".
-11. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+5. Trường hợp có STATEMENT:
+   - Số hóa đơn trên ĐNTT phải khớp với INVOICE hoặc COMMERCIALINVOICE tương ứng.
+   - Số hóa đơn trên INVOICE hoặc COMMERCIALINVOICE phải tồn tại trong các số hóa đơn của STATEMENT.
+   - Số bảng kê trên STATEMENT phải khớp với số hóa đơn trên CUSTOMSHEET.
+   - Nếu một trong ba mắt xích trên không khớp thì điều kiện không hợp lệ.
+6. Ngoài ra trên một số chứng từ, nếu có nhiều hóa đơn, dữ liệu số hóa đơn có thể bị ghi tắt, ví dụ ở CUSTOMSHEET có số hóa đơn là: ABCXYZ01-02-03, thì cũng có thể được hiểu là cho 3 hóa đơn: ABCXYZ01, ABCXYZ02, ABCXYZ03.
+7. Không bắt buộc số hóa đơn INVOICE phải giống số hóa đơn COMMERCIALINVOICE nếu các nhóm đối chiếu tương ứng đều đạt.
+8. Nếu số hóa đơn trên ĐNTT không khớp với cả INVOICE và COMMERCIALINVOICE sau chuẩn hóa => CriteriaStatus = "NG".
+9. Nếu không có STATEMENT và số hóa đơn trên CUSTOMSHEET không khớp với cả COMMERCIALINVOICE và INVOICE sau chuẩn hóa => CriteriaStatus = "NG".
+10. Nếu có STATEMENT nhưng Số hóa đơn trên STATEMENT không chứa số hóa đơn tương ứng hoặc hoặc số bảng kê không khớp CUSTOMSHEET => CriteriaStatus = "NG".
+11. Nếu thiếu số hóa đơn hoặc số bảng kê khi có STATEMENT hoặc thiếu dữ liệu số hóa đơn ở chứng từ cần dùng để đối chiếu => CriteriaStatus = "REVIEW".
+12. Nếu các điều kiện đối chiếu hợp lệ (mức độ tương đồng trên tổng số lượng ký tự >= 80% sau chuẩn hóa) => CriteriaStatus = "OK".
+13. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số hóa đơn.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số hóa đơn.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -58,7 +66,7 @@ Bước 2: Đối chiếu
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, trực tiếp về kết quả đối chiếu số hóa đơn:
-- Nếu BLANK do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số hóa đơn => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do không khớp số hóa đơn => nêu rõ số hóa đơn ĐNTT không khớp ở loại chứng từ nào, cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số hóa đơn đã hoàn toàn khớp với nhau."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -89,6 +97,9 @@ DECLARE @PromptInput NVARCHAR(MAX) = N'{{#each datas}}***
 {{#if (eq this.SectionType "COMMERCIALINVOICE")}}
 { Loại chứng từ: {{this.SectionType}} | Số hóa đơn: {{this.VoucherNo}} | Tên file: {{this.FileName}} }
 {{/if}}
+{{#if (eq this.SectionType "STATEMENT")}}
+{ Loại chứng từ: {{this.SectionType}} | Số bảng kê: {{this.ListNo}} | Số hóa đơn: {{this.VoucherNo}} | Tên file: {{this.FileName}} }
+{{/if}}
 {{/each}}';
 
 -- Dữ liệu đầu ra 
@@ -96,7 +107,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số hóa đơn",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }

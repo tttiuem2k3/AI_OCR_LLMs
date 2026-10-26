@@ -33,14 +33,14 @@ Bước 3: Đối chiếu theo điều kiện bắt buộc
 + Đối chiếu các dòng số tiền yêu cầu trên ĐNTT theo số hóa đơn phải bằng Số tiền = Tỷ lệ thanh toán của đợt hiện tại nhân với số tiền trên mỗi INVOICE và COMMERCIALINVOICE(nếu có) tương ứng.
 + Hoặc có thể đối chiếu tổng số tiền yêu cầu trên ĐNTT với Tổng số tiền phải thanh toán = Tỷ lệ thanh toán của đợt hiện tại nhân với tổng số tiền trên INVOICE hoặc COMMERCIALINVOICE(nếu có).
 => Thoả một trong 2 điều kiện đối chiếu thêm ở trên là được.
-4. Nếu bất kỳ dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền => CriteriaStatus = "BLANK".
+4. Nếu bất kỳ dữ liệu nào cần dùng để kết luận thiếu dữ liệu số tiền => CriteriaStatus = "REVIEW".
 5. Nếu có ít nhất một điều kiện đối chiếu sai => CriteriaStatus = "NG".
 6. Nếu có đủ dữ liệu và tất cả điều kiện đối chiếu đều đúng => CriteriaStatus = "OK".
-7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+7. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền phải thanh toán.
+- Nếu REVIEW thì liệt kê chính xác tên file bị thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền phải thanh toán.
 - Nếu NG thì liệt kê chính xác tên file bị sai lệch dữ liệu số tiền.
 - Nếu OK thì trả chuỗi rỗng "".
 - Trường hợp nếu nhiều file thì:
@@ -51,7 +51,7 @@ Bước 3: Đối chiếu theo điều kiện bắt buộc
 
 * QUY TẮC DESCRIPTION
 Viết nhận xét ngắn gọn, rõ ràng, dễ hiểu, trực tiếp về kết quả đối chiếu số tiền:
-- Nếu BLANK do thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền phải thanh toán => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
+- Nếu REVIEW do thiếu dữ liệu số tiền hoặc thiếu căn cứ để xác định số tiền phải thanh toán => nêu rõ thiếu dữ liệu ở loại chứng từ nào, file nào, cần kiểm tra lại.
 - Nếu NG do số tiền cần đối chiếu theo điều kiện không khớp => nêu rõ không khớp số tiền giữa loại chứng từ nào (file nào) với loại chứng từ nào (file nào), cần kiểm tra lại.
 - Nếu OK => nêu ngắn gọn rằng "Số tiền đã hoàn toàn phù hợp theo điều kiện thanh toán."
 - Nội dung Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -98,7 +98,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'*** SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Số tiền",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét ngắn gọn"
   }

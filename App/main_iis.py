@@ -1,5 +1,5 @@
 # App/main_iis.py
-import os, re, uuid, time, shutil, asyncio
+import os, re, uuid, time, shutil
 import threading
 import logging
 from logging.handlers import RotatingFileHandler
@@ -150,8 +150,13 @@ settings = get_settings_all()
 
 from .OCR_BE.office_text import OFFICE_TEXT_EXTENSIONS, extract_office_text
 from .OCR_BE.output_artifacts import build_unique_artifact_stem, iter_file
-from .OCR_BE.process_OCR import split_ocr_text
-from .Rules_AI_BEM_MEIKO import clear_holiday_setting_cache, process_ai_llms_models_rules
+from .OCR_BE.process_OCR import run_ocr_inference, split_ocr_text
+from .Rules_BE.rule_engine_config_repository import build_rule_engine_config_loader
+from .Rules_BE.compare_execution_mode import normalize_compare_execution_mode
+from .Rules_BE.rules_ai_bem_meiko import clear_holiday_setting_cache, process_ai_llms_models_rules
+from .service_error_handling import processing_error_detail, processing_error_status
+
+rule_engine_config_loader = build_rule_engine_config_loader(settings, logger)
 
 # Thiết bị OCR được điều khiển tập trung bởi settings_all.DEVICE ("cpu" hoặc "gpu").
 # LLM/CUDA vẫn dùng cấu hình GPU riêng, không phụ thuộc công tắc này.
@@ -395,7 +400,7 @@ def ocr_upload():
         _ensure_ocr_ready_for_request()
     except Exception as e:
         logger.error("OCR ensure/load failed: %s", repr(e), exc_info=True)
-        return jsonify(detail=f"Engine not initialized: {e}"), 500
+        return jsonify(detail=processing_error_detail(e, "Engine not initialized")), processing_error_status(e)
 
     uploads: List = []
     f1 = request.files.get("file")
@@ -441,16 +446,24 @@ def ocr_upload():
             else:
                 logger.info("OCR infer begin: %s", tmp)
                 try:
-                    pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=artifact_stem))
+                    pages = run_ocr_inference(
+                        _engine,
+                        str(tmp),
+                        annot_stem=artifact_stem,
+                    )
                 except Exception as error:
                     pages = pdf_data_format_error_pages(error) if ext in PDF_EXTS else None
                     if pages is None:
-                        raise
+                        logger.error("OCR infer failed for %s: %s", fname, repr(error), exc_info=True)
+                        return jsonify(detail=processing_error_detail(error, "OCR failed")), processing_error_status(error)
                     logger.warning("Invalid PDF data format: %s; returning OCR error text", fname)
                 logger.info("OCR infer done in %.2fs", time.time() - t1)
 
             txt_path = _engine.save_txt(pages, artifact_stem)
             logger.info("Saved TXT: %s (size=%d)", txt_path, Path(txt_path).stat().st_size)
+        except Exception as error:
+            logger.error("OCR processing failed for %s: %s", fname, repr(error), exc_info=True)
+            return jsonify(detail=processing_error_detail(error, "OCR failed")), processing_error_status(error)
         finally:
             safe_unlink(tmp)
 
@@ -501,11 +514,16 @@ def ocr_upload():
             else:
                 t2 = time.time()
                 try:
-                    pages = asyncio.run(_engine.ainfer(str(tmp), annot_stem=stem))
+                    pages = run_ocr_inference(
+                        _engine,
+                        str(tmp),
+                        annot_stem=stem,
+                    )
                 except Exception as error:
                     pages = pdf_data_format_error_pages(error) if ext in PDF_EXTS else None
                     if pages is None:
-                        raise
+                        logger.error("OCR infer failed for batch item %s: %s", fname, repr(error), exc_info=True)
+                        return jsonify(detail=processing_error_detail(error, "OCR failed")), processing_error_status(error)
                     logger.warning("Invalid PDF data format: %s; adding OCR error text", fname)
                 logger.info("Infer %.2fs for %s", time.time() - t2, fname)
 
@@ -516,10 +534,17 @@ def ocr_upload():
                 result_lines.append(f"----{pi}----")
                 result_lines.append("")
 
+        except Exception as error:
+            logger.error("OCR batch processing failed for %s: %s", fname, repr(error), exc_info=True)
+            return jsonify(detail=processing_error_detail(error, "OCR failed")), processing_error_status(error)
         finally:
             safe_unlink(tmp)
 
-    Path(out_path).write_text("\n".join(result_lines), encoding="utf-8")
+    try:
+        Path(out_path).write_text("\n".join(result_lines), encoding="utf-8")
+    except Exception as error:
+        logger.error("OCR batch output failed: %s", repr(error), exc_info=True)
+        return jsonify(detail=processing_error_detail(error, "OCR failed")), processing_error_status(error)
     logger.info("Batch saved: %s (size=%d)", out_path, Path(out_path).stat().st_size)
 
     cd = build_content_disposition(out_path.name)
@@ -1730,7 +1755,7 @@ def llms_ai_llms_models():
         return _endpoint_text({"detail": detail_text}, status_code)
 
     if _llm_engine is None or _llm_registry is None:
-        return _endpoint_text({"detail": "LLMs engine not initialized"}, 500)
+        return _endpoint_text({"detail": "LLMs engine not initialized"}, 503)
 
     if _llms_train_lock.locked():
         return _endpoint_text({"detail": "LLMs training is running"}, 409)
@@ -1739,7 +1764,10 @@ def llms_ai_llms_models():
         try:
             _switch_to_llm_only(reason="ai_llms_models_infer")
         except Exception as e:
-            return _endpoint_text({"detail": f"Failed to unload OCR before LLM inference: {e}"}, 500)
+            return _endpoint_text(
+                {"detail": processing_error_detail(e, "Failed to unload OCR before LLM inference")},
+                processing_error_status(e),
+            )
 
     # ---------------------------------------------------------------------
     # Bước 5: Đọc dữ liệu request và lấy prompt hiện tại.
@@ -1753,6 +1781,16 @@ def llms_ai_llms_models():
 
     if not latest_user:
         return _endpoint_text({"detail": "messages must contain at least one non-empty message"}, 400)
+
+    try:
+        compare_execution_mode = normalize_compare_execution_mode(
+            req.get(
+                "CompareExecutionMode",
+                req.get("compareExecutionMode", req.get("CompareMode", req.get("compareMode"))),
+            )
+        )
+    except ValueError as error:
+        return _endpoint_text({"detail": str(error)}, 400)
 
     # ---------------------------------------------------------------------
     # Bước 6: Các hàm phụ trợ bên trong endpoint.
@@ -2165,6 +2203,8 @@ def llms_ai_llms_models():
             append_response_log_fn=lambda payload: _append_response_log(payload, seq_override=request_log_seq),
             light_cuda_cleanup_fn=_llms_light_cuda_cleanup,
             logger=logger,
+            rule_engine_config_loader_fn=rule_engine_config_loader,
+            compare_execution_mode=compare_execution_mode,
         )
         if int(status_code) != 200:
             return _as_text_payload(result_payload), int(status_code)
@@ -2172,8 +2212,8 @@ def llms_ai_llms_models():
     except Exception as e:
         if str(e) == "OutMemory" or _is_cuda_oom_error(e):
             _llms_light_cuda_cleanup()
-            return _as_text_payload({"detail": "OutMemory"})
-        return _as_text_payload({"detail": f"Generate failed: {e}"}), 400
+            return _as_text_payload({"detail": "OutMemory"}), 503
+        return _as_text_payload({"detail": processing_error_detail(e, "Generate failed")}), processing_error_status(e)
     finally:
         _llms_light_cuda_cleanup()
 

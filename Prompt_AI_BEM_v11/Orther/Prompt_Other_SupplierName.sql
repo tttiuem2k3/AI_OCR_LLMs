@@ -28,20 +28,20 @@ Bước 2: Chọn nhóm chứng từ theo nguồn hình thành và lần thanh t
 3. Chỉ sử dụng đúng các chứng từ xuất hiện trong dữ liệu đầu vào sau khi hệ thống đã lọc theo rule.
 
 Bước 3: Kết luận
-1. Nếu một chứng từ bắt buộc có mặt nhưng thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "BLANK".
+1. Nếu một chứng từ bắt buộc có mặt nhưng thiếu dữ liệu tên nhà cung cấp => CriteriaStatus = "REVIEW".
 2. Nếu có đủ dữ liệu nhưng có ít nhất một tên nhà cung cấp không cùng pháp nhân => CriteriaStatus = "NG".
 3. Nếu có đủ dữ liệu và toàn bộ tên nhà cung cấp thuộc nhóm cần đối chiếu cùng một pháp nhân => CriteriaStatus = "OK".
-4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "BLANK".
+4. "CriteriaStatus" chỉ tồn tại một trong ba giá trị: "OK", "NG", "REVIEW".
 
 * QUY TẮC FILE NAME
 "FileName" chỉ liệt kê các tên file đã thực sự được đọc để đưa ra kết luận:
-- Nếu BLANK thì liệt kê chính xác file bị thiếu tên nhà cung cấp.
+- Nếu REVIEW thì liệt kê chính xác file bị thiếu tên nhà cung cấp.
 - Nếu NG thì liệt kê chính xác file có tên nhà cung cấp không khớp.
 - Nếu OK thì trả chuỗi rỗng "".
 - Nếu nhiều file thì phân tách bằng dấu phẩy ", ", giữ thứ tự xuất hiện, loại trùng và tối đa 10 file.
 
 * QUY TẮC DESCRIPTION
-- BLANK: nêu rõ loại chứng từ và file bị thiếu tên nhà cung cấp.
+- REVIEW: nêu rõ loại chứng từ và file bị thiếu tên nhà cung cấp.
 - NG: nêu rõ tên nhà cung cấp không khớp giữa các loại chứng từ và file liên quan.
 - OK: ghi "Tên nhà cung cấp đã hoàn toàn khớp với nhau."
 - Description phải phù hợp với CriteriaStatus, không được mâu thuẫn.';
@@ -85,7 +85,7 @@ DECLARE @PromptOutput NVARCHAR(MAX) = N'* SCHEMA JSON BẮT BUỘC
 {
   "criteria": {
     "CriteriaName": "Tên nhà cung cấp",
-    "CriteriaStatus": "OK | NG | BLANK",
+    "CriteriaStatus": "OK | NG | REVIEW",
     "FileName": "file1.pdf, file2.pdf",
     "Description": "Nhận xét"
   }
